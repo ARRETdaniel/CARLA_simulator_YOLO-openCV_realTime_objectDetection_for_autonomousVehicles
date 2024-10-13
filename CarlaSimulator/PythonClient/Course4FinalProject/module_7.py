@@ -105,8 +105,9 @@ WEATHERID = {
     "SOFTRAINSUNSET": 14,
 }
 SIMWEATHER = WEATHERID["CLEARNOON"]     # set simulation weather
-
-PLAYER_START_INDEX = 1      # spawn index for player (keep to 1)
+# change the start position. The Carla UE must be open with
+#  no parameters related to the map.
+PLAYER_START_INDEX = 13      # spawn index for player (keep to 1)
 FIGSIZE_X_INCHES   = 8      # x figure size of feedback in inches
 FIGSIZE_Y_INCHES   = 8      # y figure size of feedback in inches
 PLOT_LEFT          = 0.1    # in fractions of figure width and height
@@ -956,6 +957,8 @@ def exec_waypoint_nav_demo(args):
             frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
 
             cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
+            print("\nclassids",classids)
+            print("\nboxes", boxes)
             if frame == 100:
                 stopsign_fences = stop_sign()
                 bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE, stopsign_fences, LEAD_VEHICLE_LOOKAHEAD)

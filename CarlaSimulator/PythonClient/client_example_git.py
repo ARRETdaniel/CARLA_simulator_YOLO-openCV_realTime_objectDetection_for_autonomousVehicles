@@ -24,8 +24,8 @@ from carla.util import print_over_same_line
 
 def run_carla_client(args):
     # Here we will run 3 episodes with 300 frames each.
-    number_of_episodes = 3
-    frames_per_episode = 300
+    number_of_episodes = 1
+    frames_per_episode = 20
 
     # We assume the CARLA server is already waiting for a client to connect at
     # host:port. To create a connection we can use the `make_carla_client`
@@ -98,7 +98,8 @@ def run_carla_client(args):
 
             # Choose one player start at random.
             number_of_player_starts = len(scene.player_start_spots)
-            player_start = random.randint(0, max(0, number_of_player_starts - 1))
+            player_start = 102
+            #player_start = random.randint(0, max(0, number_of_player_starts - 1))
 
             # Notify the server that we want to start the episode at the
             # player_start index. This function blocks until the server is ready
