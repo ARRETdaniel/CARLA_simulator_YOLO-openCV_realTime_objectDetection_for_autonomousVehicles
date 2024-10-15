@@ -18,6 +18,8 @@ import time
 #test
 import plotly.express as px
 import numpy as np
+import cv2 # image processig
+
 #test
 
 from carla.client import make_carla_client
@@ -25,6 +27,26 @@ from carla.sensor import Camera, Lidar
 from carla.settings import CarlaSettings
 from carla.tcp import TCPConnectionError
 from carla.util import print_over_same_line
+from CarlaSimulator.PythonClient.Course4FinalProject.yolo_utils import infer_image, show_image
+
+
+# OPEN CV2 WITH DARKNET WEIGHTS ETC.
+
+# Give the configuration, weight and labels files for the model
+model_configuration = '.\CarlaSimulator\PythonClient\Course4FinalProject\yolov3-coco\yolov3.cfg';
+model_weights = '.\CarlaSimulator\PythonClient\Course4FinalProject\yolov3-coco\yolov3.weights';
+model_labels = '.\CarlaSimulator\PythonClient\Course4FinalProject\yolov3-coco\coco-labels';
+
+# Get the labels
+labels = open(model_labels).read().strip().split('\n')
+# Intializing colors to represent each label uniquely
+colors = np.random.randint(0, 255, size=(len(labels), 3), dtype='uint8')
+# Load the weights and configutation to form the pretrained YOLOv3 model
+net = cv2.dnn.readNetFromDarknet(model_configuration, model_weights)
+# Get the output layer names of the model
+layer_names = net.getLayerNames()
+layer_names = [layer_names[i-1] for i in net.getUnconnectedOutLayers()]
+#layer_names = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
 
 def run_carla_client(args):
@@ -124,12 +146,39 @@ def run_carla_client(args):
                 print_measurements(measurements)
 
                 # Save the images to disk if requested.
-                #if 1==1:
-                ######if args.save_images_to_disk:
-                for name, measurement in sensor_data.items():
-                    filename = args.out_filename_format.format(episode, name, frame)
-                    measurement.save_to_disk(filename)
-                # We can access the encoded data of a given image as numpy
+                    #if 1==1:
+                frame_obj_to_detect = np.array(sensor_data['CAMERA'].data)
+                #frame_obj = np.array((on_car_camera.raw_data))
+                #frame_obj = np.array(on_car_camera.data)
+                '''     # TODO DATA FORMATS
+                print(sensor_data) # {'CAMERA': <carla.sensor.Image object at 0x000002970B91CBA8>}
+                print(sensor_data['CAMERA']) # <carla.sensor.Image object at 0x000001A50B1DCDA0>
+                print(sensor_data['CAMERA'].data) # [[[137 167 200]
+                print(on_car_camera.data) # [[[136 166 200]
+                print(on_car_camera) # <carla.sensor.Image object at 0x000001500B54F4E0>
+                print(frame_obj) # [[[137 167 200]
+                print(type(frame_obj)) # <class 'numpy.ndarray'>
+                '''
+
+                #height = on_car_camera.height
+                #width = on_car_camera.width
+
+                if count_obg_detection == 0:
+                    frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names, \
+                                        sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels)
+                    count_obg_detection += 1
+                else:
+                    frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names, \
+                                        sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels, boxes, confidences, classids, idxs, infer=False)
+                    count_obg_detection = (count_obg_detection + 1) % 6
+
+                #https://stackoverflow.com/questions/50963283/opencv-imshow-doesnt-need-convert-from-bgr-to-rgb
+                frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
+                if args.save_images_to_disk:
+                    for name, measurement in sensor_data.items():
+                        filename = args.out_filename_format.format(episode, name, frame)
+                        measurement.save_to_disk(filename)
+                    # We can access the encoded data of a given image as numpy
                 # array using its "data" property. For instance, to get the
                 # depth value (normalized) at pixel X, Y
                 #

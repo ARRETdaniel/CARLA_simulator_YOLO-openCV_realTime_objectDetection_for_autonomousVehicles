@@ -14,6 +14,8 @@ import argparse
 import logging
 import random
 import time
+import numpy as np
+import cv2 # image processig
 
 from carla.client import make_carla_client
 from carla.sensor import Camera, Lidar
@@ -21,11 +23,31 @@ from carla.settings import CarlaSettings
 from carla.tcp import TCPConnectionError
 from carla.util import print_over_same_line
 
+from Course4FinalProject.yolo_utils import infer_image, show_image
+
+
+# OPEN CV2 WITH DARKNET WEIGHTS ETC.
+
+# Give the configuration, weight and labels files for the model
+model_configuration = '.\Course4FinalProject\yolov3-coco\yolov3.cfg';
+model_weights = '.\Course4FinalProject\yolov3-coco\yolov3.weights';
+model_labels = '.\Course4FinalProject\yolov3-coco\coco-labels';
+
+# Get the labels
+labels = open(model_labels).read().strip().split('\n')
+# Intializing colors to represent each label uniquely
+colors = np.random.randint(0, 255, size=(len(labels), 3), dtype='uint8')
+# Load the weights and configutation to form the pretrained YOLOv3 model
+net = cv2.dnn.readNetFromDarknet(model_configuration, model_weights)
+# Get the output layer names of the model
+layer_names = net.getLayerNames()
+layer_names = [layer_names[i-1] for i in net.getUnconnectedOutLayers()]
+#layer_names = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 
 def run_carla_client(args):
     # Here we will run 3 episodes with 300 frames each.
     number_of_episodes = 1
-    frames_per_episode = 20
+    frames_per_episode = 1000
 
     # We assume the CARLA server is already waiting for a client to connect at
     # host:port. To create a connection we can use the `make_carla_client`
@@ -58,7 +80,7 @@ def run_carla_client(args):
                 # frame.
 
                 # The default camera captures RGB images of the scene.
-                camera0 = Camera('CameraRGB')
+                camera0 = Camera('CAMERA')
                 # Set image resolution in pixels.
                 camera0.set_image_size(800, 600)
                 # Set its position relative to the car in meters.
@@ -99,6 +121,7 @@ def run_carla_client(args):
             # Choose one player start at random.
             number_of_player_starts = len(scene.player_start_spots)
             player_start = 102
+
             #player_start = random.randint(0, max(0, number_of_player_starts - 1))
 
             # Notify the server that we want to start the episode at the
@@ -107,6 +130,7 @@ def run_carla_client(args):
             print('Starting new episode at %r...' % scene.map_name)
             client.start_episode(player_start)
 
+            count_obg_detection = 0
             # Iterate every frame in the episode.
             for frame in range(0, frames_per_episode):
 
@@ -117,10 +141,40 @@ def run_carla_client(args):
                 print_measurements(measurements)
 
                 # Save the images to disk if requested.
-                if True:
+                if False:
                     for name, measurement in sensor_data.items():
                         filename = args.out_filename_format.format(episode, name, frame)
                         measurement.save_to_disk(filename)
+                '''
+                frame_obj_to_detect = np.array(sensor_data['CAMERA'].data)
+                #frame_obj = np.array((on_car_camera.raw_data))
+                #frame_obj = np.array(on_car_camera.data)
+                     # TODO DATA FORMATS
+                print(sensor_data) # {'CAMERA': <carla.sensor.Image object at 0x000002970B91CBA8>}
+                print(sensor_data['CAMERA']) # <carla.sensor.Image object at 0x000001A50B1DCDA0>
+                print(sensor_data['CAMERA'].data) # [[[137 167 200]
+                print(on_car_camera.data) # [[[136 166 200]
+                print(on_car_camera) # <carla.sensor.Image object at 0x000001500B54F4E0>
+                print(frame_obj) # [[[137 167 200]
+                print(type(frame_obj)) # <class 'numpy.ndarray'>
+                
+
+                #height = on_car_camera.height
+                #width = on_car_camera.width
+
+                if count_obg_detection == 0:
+                    frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names, \
+                                        sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels)
+                    count_obg_detection += 1
+                else:
+                    frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names, \
+                                        sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels, boxes, confidences, classids, idxs, infer=False)
+                    count_obg_detection = (count_obg_detection + 1) % 6
+
+                #https://stackoverflow.com/questions/50963283/opencv-imshow-doesnt-need-convert-from-bgr-to-rgb
+                frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
+                cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
+                '''
 
                 # We can access the encoded data of a given image as numpy
                 # array using its "data" property. For instance, to get the

@@ -107,7 +107,7 @@ WEATHERID = {
 SIMWEATHER = WEATHERID["CLEARNOON"]     # set simulation weather
 # change the start position. The Carla UE must be open with
 #  no parameters related to the map.
-PLAYER_START_INDEX = 1      # spawn index for player (keep to 1)
+PLAYER_START_INDEX = 13      # spawn index for player (keep to 1)
 FIGSIZE_X_INCHES   = 8      # x figure size of feedback in inches
 FIGSIZE_Y_INCHES   = 8      # y figure size of feedback in inches
 PLOT_LEFT          = 0.1    # in fractions of figure width and height

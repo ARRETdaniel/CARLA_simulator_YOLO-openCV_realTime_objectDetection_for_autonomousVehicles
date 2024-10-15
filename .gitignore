@@ -18,3 +18,4 @@ carla_darknet_integration
 CarlaSimulator/PythonClient/carla_darknet_integration
 *.weights
 tempCodeRunnerFile.python
+PythonAPI
