@@ -29,6 +29,7 @@ import configparser
 import local_planner
 import behavioural_planner
 import cv2 # image processig
+import colorsys
 
 
 #test show  image console
@@ -63,7 +64,7 @@ model_labels = '.\yolov3-coco\coco-labels';
 # Get the labels
 labels = open(model_labels).read().strip().split('\n')
 # Intializing colors to represent each label uniquely
-colors = np.random.randint(0, 255, size=(len(labels), 3), dtype='uint8')
+#colors = np.random.randint(0, 255, size=(len(labels), 3), dtype='uint8')
 # Load the weights and configutation to form the pretrained YOLOv3 model
 net = cv2.dnn.readNetFromDarknet(model_configuration, model_weights)
 # Get the output layer names of the model
@@ -107,7 +108,7 @@ WEATHERID = {
 SIMWEATHER = WEATHERID["CLEARNOON"]     # set simulation weather
 # change the start position. The Carla UE must be open with
 #  no parameters related to the map.
-PLAYER_START_INDEX = 13      # spawn index for player (keep to 1)
+PLAYER_START_INDEX = 1      # spawn index for player (keep to 1)
 FIGSIZE_X_INCHES   = 8      # x figure size of feedback in inches
 FIGSIZE_Y_INCHES   = 8      # y figure size of feedback in inches
 PLOT_LEFT          = 0.1    # in fractions of figure width and height
@@ -268,6 +269,7 @@ def print_measurements(measurements):
         )
     print_over_same_line(message)
 '''TEST CAMERA'''
+
 def get_start_pos(scene):
     """Obtains player start x,y, yaw pose from the scene
 
@@ -372,8 +374,57 @@ def write_collisioncount_file(collided_list):
     with open(file_name, 'w') as collision_file:
         collision_file.write(str(sum(collided_list)))
 
+def get_parkedcar_box_pts(file_path):
+    # Parked car(s) (X(m), Y(m), Z(m), Yaw(deg), RADX(m), RADY(m), RADZ(m))
+    parkedcar_data = None
+    parkedcar_box_pts = []  # List to store the box points of the parked cars
+
+    # Read parked car data from file
+    with open(file_path, 'r') as parkedcar_file:
+        next(parkedcar_file)  # Skip the header
+        parkedcar_reader = csv.reader(parkedcar_file, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
+        parkedcar_data = list(parkedcar_reader)
+
+        # Convert yaw angles to radians
+        for i in range(len(parkedcar_data)):
+            parkedcar_data[i][3] = parkedcar_data[i][3] * np.pi / 180.0
+
+    # Obtain parked car(s) box points for LP
+    for i in range(len(parkedcar_data)):
+        x = parkedcar_data[i][0]
+        y = parkedcar_data[i][1]
+        z = parkedcar_data[i][2]
+        yaw = parkedcar_data[i][3]
+        xrad = parkedcar_data[i][4]
+        yrad = parkedcar_data[i][5]
+        zrad = parkedcar_data[i][6]
+
+        # Define corner positions of the car's box in local coordinates
+        cpos = np.array([
+                [-xrad, -xrad, -xrad, 0,    xrad, xrad, xrad,  0],
+                [-yrad, 0,     yrad,  yrad, yrad, 0,    -yrad, -yrad]])
+
+        # Rotation matrix for yaw
+        rotyaw = np.array([
+                [np.cos(yaw), np.sin(yaw)],
+                [-np.sin(yaw), np.cos(yaw)]])
+
+        # Shift box points to the car's position
+        cpos_shift = np.array([
+                [x, x, x, x, x, x, x, x],
+                [y, y, y, y, y, y, y, y]])
+
+        # Rotate and shift the box points
+        cpos = np.add(np.matmul(rotyaw, cpos), cpos_shift)
+
+        # Append each corner point to the parkedcar_box_pts list
+        for j in range(cpos.shape[1]):
+            parkedcar_box_pts.append([cpos[0, j], cpos[1, j]])
+
+    return parkedcar_box_pts
+
 # TODO implemente get and set
-def stop_sign():
+def get_stop_sign(file_path):
     #############################################
     # Load stop sign and parked vehicle parameters
     # Convert to input params for LP
@@ -381,7 +432,7 @@ def stop_sign():
     # Stop sign (X(m), Y(m), Z(m), Yaw(deg))
     stopsign_data = None
     stopsign_fences = []     # [x0, y0, x1, y1]
-    with open(C4_STOP_SIGN_FILE, 'r') as stopsign_file:
+    with open(file_path, 'r') as stopsign_file:
         next(stopsign_file)  # skip header
         stopsign_reader = csv.reader(stopsign_file,
                                      delimiter=',',
@@ -409,12 +460,59 @@ def stop_sign():
         stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
     return stopsign_fences
 
+def save_detected_car_boxes(boxes, classids, output_file=C4_PARKED_CAR_FILE):
+    """
+    Saves detected car bounding boxes to a text file.
+    Only writes boxes corresponding to cars (classid == 2).
+
+    Parameters:
+    - frame_obj_to_detect: The frame where detection happens.
+    - boxes: Detected bounding boxes.
+    - classids: Detected class IDs.
+    - output_file: File to store the detected car boxes (default 'detected_car_boxes.txt').
+    """
+    # Open the file to write the detected car bounding boxes
+    with open(output_file, 'w') as file:
+        # Write header
+        file.write("X(m), Y(m), Z(m), YAW(deg), BOX_X_RADIUS(m), BOX_Y_RADIUS(m), BOX_Z_RADIUS(m)\n")
+
+        # Loop through detected objects and save only cars
+        for i, classid in enumerate(classids):
+            if classid == 2:  # Car detected
+                x, y, w, h = boxes[i]
+
+                # Convert the bounding box data to match parked car format
+                # Assuming Z 38.10 and Yaw 180.0, and radius in X and Y are half of width and height
+                file.write(f"{x}, {y}, 38.10, 180.0, {w/2}, {h/2}, 0\n")
+
+
+def generate_accessible_colors(num_colors):
+    colors = []
+    for i in range(num_colors):
+        # Evenly space hues for distinguishable colors
+        hue = i / num_colors
+        saturation = 0.7  # Keep saturation high enough for vivid colors
+        lightness = 0.5   # Medium lightness for good contrast (neither too dark nor too light)
+
+        # Convert HSL to RGB
+        rgb = colorsys.hls_to_rgb(hue, lightness, saturation)
+
+        # Convert RGB from 0-1 range to 0-255 range and cast to uint8
+        rgb = tuple(int(255 * x) for x in rgb)
+        colors.append(rgb)
+
+    return np.array(colors, dtype='uint8')
+
 
 def exec_waypoint_nav_demo(args):
     """ Executes waypoint navigation demo.
     """
 
     with make_carla_client(args.host, args.port) as client:
+        # Directory to save output files
+        output_dir = "output_frames"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
         print('Carla client connected.')
 
         settings = make_carla_settings(args)
@@ -494,7 +592,7 @@ def exec_waypoint_nav_demo(args):
         # Set options
         live_plot_timer = Timer(live_plot_period)
 
-        stopsign_fences = stop_sign()
+        stopsign_fences = get_stop_sign(C4_STOP_SIGN_FILE)
         #stopsign_fences = None
         '''
         #############################################
@@ -532,7 +630,7 @@ def exec_waypoint_nav_demo(args):
             spos = np.add(np.matmul(rotyaw, spos), spos_shift)
             stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
         '''
-
+        '''
         # Parked car(s) (X(m), Y(m), Z(m), Yaw(deg), RADX(m), RADY(m), RADZ(m))
         parkedcar_data = None
         parkedcar_box_pts = []      # [x,y]
@@ -568,6 +666,8 @@ def exec_waypoint_nav_demo(args):
             for j in range(cpos.shape[1]):
                 parkedcar_box_pts.append([cpos[0,j], cpos[1,j]])
 
+        '''
+        parkedcar_box_pts = get_parkedcar_box_pts(C4_PARKED_CAR_FILE)
         #############################################
         # Load Waypoints:
         #############################################
@@ -749,7 +849,7 @@ def exec_waypoint_nav_demo(args):
         # Load parked car points
         parkedcar_box_pts_np = np.array(parkedcar_box_pts)
         trajectory_fig.add_graph("parkedcar_pts", window_size=parkedcar_box_pts_np.shape[0],
-                                 x0=parkedcar_box_pts_np[:,0], y0=parkedcar_box_pts_np[:,1],
+                                 #x0=parkedcar_box_pts_np[:,0], y0=parkedcar_box_pts_np[:,1],
                                  linestyle="", marker="+", color='b')
 
         # Add lookahead path
@@ -820,6 +920,8 @@ def exec_waypoint_nav_demo(args):
         #############################################
         # Scenario Execution Loop
         #############################################
+        colors = generate_accessible_colors(len(labels))
+
 
         # Iterate the frames until the end of the waypoints is reached or
         # the TOTAL_EPISODE_FRAMES is reached. The controller simulation then
@@ -928,7 +1030,8 @@ def exec_waypoint_nav_demo(args):
             #print(type(on_car_camera.data))
             #frame_obj = np.array(on_car_camera.data, dtype=np.uint8)
             #frame_obj = np.array(sensor_data['CAMERA'].data).round().astype(np.uint8)
-            frame_obj_to_detect = np.array(sensor_data['CAMERA'].data)
+            frame_camera = sensor_data['CAMERA']
+            frame_obj_to_detect = np.array(frame_camera.data)
             #frame_obj = np.array((on_car_camera.raw_data))
             #frame_obj = np.array(on_car_camera.data)
             '''     # TODO DATA FORMATS
@@ -957,28 +1060,64 @@ def exec_waypoint_nav_demo(args):
             frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
 
             cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
-            print("\nclassids",classids)
-            print("\nboxes", boxes)
+            print("\nidexs:",idxs)
+            print("\nconfidences:",confidences)
+            print("\nclassids:",classids)
+            print("\nboxes:", boxes)
             if frame == 100:
-                stopsign_fences = stop_sign()
+                stopsign_fences = get_stop_sign(C4_STOP_SIGN_FILE)
                 bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE, stopsign_fences, LEAD_VEHICLE_LOOKAHEAD)
                 print("STOP SIGN RELOADED", stopsign_fences)
 
+            if classids and 2 in classids:
+                # Save detected car's bounding box to a file
+                save_detected_car_boxes(boxes, classids)
+                parkedcar_box_pts = get_parkedcar_box_pts(C4_PARKED_CAR_FILE)
+                parkedcar_box_pts_np = np.array(parkedcar_box_pts)
 
-            '''# # TODO Save the images obj detected to disk.
+            '''
 
+
+                with open(C4_PARKED_CAR_FILE, 'w') as file:
+                    file.write("X(m), Y(m), Z(m), YAW(deg), BOX_X_RADIUS(m), BOX_Y_RADIUS(m), BOX_Z_RADIUS(m)\n")
+                    for i, classid in enumerate(classids):
+                        if classid == 2:  # Car detected
+                            x, y, w, h = boxes[i]
+                            # Example transformation of bounding box to match the parked car format
+                            file.write(f"{x}, {y}, 0, 0, {w/2}, {h/2}, 0\n")  # Assuming Z and Yaw are 0 for simplicity
+                '''
+
+
+            # # TODO Save the images obj detected to disk.
             # https://stackoverflow.com/questions/71413891/convert-rgb-values-to-jpg-image-in-python
             filename = "./_out/output_image"
             #os.mkdir(filename)
-            image_RGB = frame_obj
+            image_RGB = frame_obj_to_detect
             image = Image.fromarray(image_RGB.astype('uint8')).convert('RGB')
             #cv2.imwrite(filename, frame_obj) # Save the image
             image.save(f"{filename}/output_image_detected{frame}.jpg")
-
                 # TODO Save the images to disk.
             filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera', frame)
-            on_car_camera.save_to_disk(filename)
-            '''
+            frame_camera.save_to_disk(filename)
+
+            # TODO Save the infer to disk.
+
+            # Save the data as a text file
+            output_file = os.path.join(output_dir, f"frame_{frame}.txt")
+            with open(output_file, "w") as f:
+                f.write(f"Frame {frame}:\n")
+                f.write("Boxes:\n")
+                for box in boxes:
+                    f.write(f"{box}\n")
+                f.write("Confidences:\n")
+                for confidence in confidences:
+                    f.write(f"{confidence}\n")
+                f.write("Class IDs:\n")
+                for classid in classids:
+                    f.write(f"{classid}\n")
+                f.write("Indexes:\n")
+                for idx in idxs:
+                    f.write(f"{idx}\n")
             '''
             for name, measurement in sensor_data.items():
                 print("measurement")
@@ -986,8 +1125,8 @@ def exec_waypoint_nav_demo(args):
 
                 print("measurement.daata:")
                 print(measurement.data) # [[[136 166 200]...
-            '''
 
+            '''
 
 
             #vid.release()
@@ -1186,6 +1325,10 @@ def exec_waypoint_nav_demo(args):
                 pass
             else:
                 # Update live plotter with new feedback
+                # This way, you ensure that the roll function receives scalar values, one by one, for each parked car point.
+                for i in range(parkedcar_box_pts_np.shape[0]):
+                    trajectory_fig.roll("parkedcar_pts", parkedcar_box_pts_np[i, 0], parkedcar_box_pts_np[i, 1])
+                #trajectory_fig.roll("parkedcar_pts", parkedcar_box_pts_np[:,0], parkedcar_box_pts_np[:,1])
                 trajectory_fig.roll("stopsign", stopsign_fences[0][0], stopsign_fences[0][1])
                # trajectory_fig.roll("stopsign_fence", [stopsign_fences[0][0], stopsign_fences[0][2]], [stopsign_fences[0][1], stopsign_fences[0][3]])
                 trajectory_fig.roll("trajectory", current_x, current_y)
