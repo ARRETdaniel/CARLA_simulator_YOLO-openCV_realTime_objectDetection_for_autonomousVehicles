@@ -153,7 +153,11 @@ INTERP_DISTANCE_RES       = 0.01 # distance between interpolated points
 # controller output directory
 CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
-
+# CAMERAS
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
+MINI_WINDOW_WIDTH = 320
+MINI_WINDOW_HEIGHT = 180
 
 
 
@@ -176,10 +180,26 @@ def make_carla_settings(args):
     # The default camera captures RGB images of the scene.
     camera0 = Camera('CAMERA')
     # Set image resolution in pixels.
-    camera0.set_image_size(800, 600)
+    camera0.set_image_size(WINDOW_WIDTH, WINDOW_HEIGHT)
+    #camera0.set_image_size(800, 600)
     # Set its position relative to the car in meters.
-    camera0.set_position(0.30, 0, 1.30)
+    camera0.set_position(2.0, 0.0, 1.4)
+    camera0.set_rotation(0.0, 0.0, 0.0)
+    #camera0.set_position(0.30, 0, 1.30)
     settings.add_sensor(camera0)
+    # Let's add another camera producing ground-truth depth.
+    camera1 = Camera('CameraDepth', PostProcessing='Depth')
+    camera1.set_image_size(MINI_WINDOW_WIDTH, MINI_WINDOW_HEIGHT)
+    camera1.set_position(2.0, 0.0, 1.4)
+    camera1.set_rotation(0.0, 0.0, 0.0)
+    settings.add_sensor(camera1)
+
+    camera2 = Camera('CameraSemSeg', PostProcessing='SemanticSegmentation')
+    camera2.set_image_size(MINI_WINDOW_WIDTH, MINI_WINDOW_HEIGHT)
+    camera2.set_position(2.0, 0.0, 1.4)
+    camera2.set_rotation(0.0, 0.0, 0.0)
+    settings.add_sensor(camera2)
+
     ''' TEST camera '''
 
     # Base level settings
@@ -1031,6 +1051,13 @@ def exec_waypoint_nav_demo(args):
             #frame_obj = np.array(on_car_camera.data, dtype=np.uint8)
             #frame_obj = np.array(sensor_data['CAMERA'].data).round().astype(np.uint8)
             frame_camera = sensor_data['CAMERA']
+            #print("\nframe_camera:", frame_camera)
+            frame_depth = sensor_data['CameraDepth'].data
+            print("\nframe_depth:", frame_depth)
+
+            frame_semseg = sensor_data['CameraSemSeg'].data
+            print("\nframe_semseg:", frame_semseg)
+
             frame_obj_to_detect = np.array(frame_camera.data)
             #frame_obj = np.array((on_car_camera.raw_data))
             #frame_obj = np.array(on_car_camera.data)
@@ -1085,9 +1112,9 @@ def exec_waypoint_nav_demo(args):
                             x, y, w, h = boxes[i]
                             # Example transformation of bounding box to match the parked car format
                             file.write(f"{x}, {y}, 0, 0, {w/2}, {h/2}, 0\n")  # Assuming Z and Yaw are 0 for simplicity
-                '''
+            '''
 
-
+            '''
             # # TODO Save the images obj detected to disk.
             # https://stackoverflow.com/questions/71413891/convert-rgb-values-to-jpg-image-in-python
             filename = "./_out/output_image"
@@ -1096,9 +1123,44 @@ def exec_waypoint_nav_demo(args):
             image = Image.fromarray(image_RGB.astype('uint8')).convert('RGB')
             #cv2.imwrite(filename, frame_obj) # Save the image
             image.save(f"{filename}/output_image_detected{frame}.jpg")
-                # TODO Save the images to disk.
+
+            # TODO Save the images to disk.
+
+            '''
             filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera', frame)
             frame_camera.save_to_disk(filename)
+
+            output_path = "_out/on_car_camera_depth"
+            output_file = os.path.join(output_path, f"frame_{frame}.dat")
+            depth_dir = os.path.dirname(output_file)
+            if not os.path.exists(depth_dir):
+             os.makedirs(depth_dir)
+            with open(output_file, 'wb') as file:
+                np.savetxt(file, frame_depth, delimiter=',', fmt='%0.8f')
+
+            output_path = "_out/on_car_camera_semseg"
+            output_file = os.path.join(output_path, f"frame_{frame}.dat")
+            depth_dir = os.path.dirname(output_file)
+            if not os.path.exists(depth_dir):
+             os.makedirs(depth_dir)
+            with open(output_file, 'wb') as file:
+                np.savetxt(file, frame_semseg, delimiter=',', fmt='%d')
+            '''
+            filename_depth = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera_depth', frame)
+
+            depth_dir = os.path.dirname(filename_depth)
+            if not os.path.exists(depth_dir):
+             os.makedirs(depth_dir)
+            with open(filename_depth + ".txt", "wb") as f:
+                np.save(f, frame_depth)
+            #frame_depth.save_to_disk(filename)
+            filename_semseg = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera_semseg', frame)
+            semseg_dir = os.path.dirname(filename_semseg)
+            if not os.path.exists(semseg_dir):
+             os.makedirs(semseg_dir)
+            with open(filename_semseg + ".txt", "wb") as f:
+                np.save(f, frame_semseg)
+            #frame_semseg.save_to_disk(filename)
 
             # TODO Save the infer to disk.
 
@@ -1118,6 +1180,7 @@ def exec_waypoint_nav_demo(args):
                 f.write("Indexes:\n")
                 for idx in idxs:
                     f.write(f"{idx}\n")
+            '''
             '''
             for name, measurement in sensor_data.items():
                 print("measurement")
