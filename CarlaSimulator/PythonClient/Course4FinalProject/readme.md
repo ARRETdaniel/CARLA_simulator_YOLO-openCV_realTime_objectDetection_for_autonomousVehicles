@@ -11,9 +11,6 @@ python module_7.py
 
 darknet detector test C:/src/darknet/cfg/coco.data C:/src/darknet/cfg/yolov7.cfg C:/src/darknet/yolov7.weights C:/Users/danie/Documents/Documents/CURSOS/Self-Driving_Cars_Specialization/CarlaSimulator/PythonClient/Course4FinalProject/_out/episode_3360/CameraRGB/000001.png
 
-darknet detector test C:/src/darknet/cfg/coco.data C:/src/darknet/cfg/yolov7.cfg C:/src/darknet/yolov7.weights C:\Users\danie\Documents\Documents\CURSOS\Self-Driving_Cars_Specialization\CarlaSimulator\PythonClient\Course4FinalProject\_out\episode_3360\on_car_camera\000652.png
 
-
-darknet detector demo C:/src/darknet/cfg/coco.data C:/src/darknet/cfg/yolov7.cfg C:/src/darknet/yolov7.weights
 
 wsl --shutdown
