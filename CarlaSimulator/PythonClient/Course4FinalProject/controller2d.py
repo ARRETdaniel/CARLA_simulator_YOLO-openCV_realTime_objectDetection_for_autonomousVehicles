@@ -111,6 +111,23 @@ class Controller2D(object):
         throttle_output = 0
         steer_output    = 0
         brake_output    = 0
+        # forces
+        # Throttle to engine torque
+        a_0 = 400
+        a_1 = 0.1
+        a_2 = -0.0002
+
+        # Gear ratio, effective radius, mass + inertia
+        GR = 0.35
+        r_e = 0.3
+        J_e = 10
+        m = 2000
+        g = 9.81
+
+        # Aerodynamic and friction coefficients
+        c_a = 1.36
+        c_r1 = 0.01
+        # forces
 
         self.vars.create_var('kp', 0.50)
         self.vars.create_var('ki', 0.30)
@@ -131,10 +148,32 @@ class Controller2D(object):
 
         # Skip the first frame to store previous values properly
         if self._start_control_loop:
+            # ====================================================
+            # feed forward controller
+            # ====================================================
+            # calculate F_load and T_e respectively
+            # F_load calculations
+            f_aero = c_a * (v_desired ** 2)
+            r_x = c_r1 * v_desired
+            f_g = m * g * np.sin(0)
+            f_load = f_aero + r_x + f_g
 
+            # T_e calculation (assuming t_e = t_load)
+            t_e = GR * r_e * f_load
+
+            # calculate engine speed w_e
+            w_e = v_desired / (GR * r_e)
+
+            # now update throttle according to the updated engine speed w_e
+            throttle_forward = t_e / (a_0 + (a_1 * w_e) + (a_2 * w_e ** 2))
+            #dt = t - self.vars.t_prev
+            #current error: v_desired - v
+            #P e(t) = Erro, a diferença entre a entrada e a saída desejada;
             self.vars.v_error           = v_desired - v
+            #I 0 e(t)dt = Integral do erro ao longo do tempo
             self.vars.v_error_integral += self.vars.v_error * \
                                           (t - self.vars.t_prev)
+            #D e(t) = Taxa de variação do erro.
             v_error_rate_of_change      = (self.vars.v_error - self.vars.v_error_prev) /\
                                           (t - self.vars.t_prev)
 
@@ -144,9 +183,10 @@ class Controller2D(object):
                                     self.vars.integrator_max),
                             self.vars.integrator_min)
 
-            throttle_output = self.vars.kp * self.vars.v_error +\
+            throttle_output = (self.vars.kp * self.vars.v_error +\
                               self.vars.ki * self.vars.v_error_integral +\
-                              self.vars.kd * v_error_rate_of_change
+                              self.vars.kd * v_error_rate_of_change)# +\
+                              #  throttle_forward
 
             # Find cross track error (assume point with closest distance)
             crosstrack_error = float("inf")

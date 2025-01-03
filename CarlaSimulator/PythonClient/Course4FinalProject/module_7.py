@@ -57,8 +57,10 @@ from yolo_utils import infer_image, show_image
 # OPEN CV2 WITH DARKNET WEIGHTS ETC.
 
 # Give the configuration, weight and labels files for the model
-model_configuration = '.\yolov3-coco\yolov3.cfg';
-model_weights = '.\yolov3-coco\yolov3.weights';
+#model_configuration = 'C:/src/darknet/cfg/yolov7.cfg';
+model_configuration = '.\yolov3-coco\yolov3-tiny.cfg';
+#model_weights = 'C:/src/darknet/yolov7.weights';
+model_weights = '.\yolov3-coco\yolov3-tiny.weights';
 model_labels = '.\yolov3-coco\coco-labels';
 
 # Get the labels
@@ -869,7 +871,7 @@ def exec_waypoint_nav_demo(args):
         # Load parked car points
         parkedcar_box_pts_np = np.array(parkedcar_box_pts)
         trajectory_fig.add_graph("parkedcar_pts", window_size=parkedcar_box_pts_np.shape[0],
-                                 #x0=parkedcar_box_pts_np[:,0], y0=parkedcar_box_pts_np[:,1],
+                                 x0=parkedcar_box_pts_np[:,0], y0=parkedcar_box_pts_np[:,1],
                                  linestyle="", marker="+", color='b')
 
         # Add lookahead path
@@ -1050,13 +1052,14 @@ def exec_waypoint_nav_demo(args):
             #print(type(on_car_camera.data))
             #frame_obj = np.array(on_car_camera.data, dtype=np.uint8)
             #frame_obj = np.array(sensor_data['CAMERA'].data).round().astype(np.uint8)
+            # TODO Cameras
             frame_camera = sensor_data['CAMERA']
             #print("\nframe_camera:", frame_camera)
-            frame_depth = sensor_data['CameraDepth'].data
-            print("\nframe_depth:", frame_depth)
+            #frame_depth = sensor_data['CameraDepth'].data
+            #print("\nframe_depth:", frame_depth)
 
-            frame_semseg = sensor_data['CameraSemSeg'].data
-            print("\nframe_semseg:", frame_semseg)
+            #frame_semseg = sensor_data['CameraSemSeg'].data
+            #print("\nframe_semseg:", frame_semseg)
 
             frame_obj_to_detect = np.array(frame_camera.data)
             #frame_obj = np.array((on_car_camera.raw_data))
@@ -1087,20 +1090,22 @@ def exec_waypoint_nav_demo(args):
             frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
 
             cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
-            print("\nidexs:",idxs)
-            print("\nconfidences:",confidences)
-            print("\nclassids:",classids)
-            print("\nboxes:", boxes)
+            #print("\nidexs:",idxs)
+            #print("\nconfidences:",confidences)
+            #print("\nclassids:",classids)
+            #print("\nboxes:", boxes)
             if frame == 100:
                 stopsign_fences = get_stop_sign(C4_STOP_SIGN_FILE)
                 bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE, stopsign_fences, LEAD_VEHICLE_LOOKAHEAD)
                 print("STOP SIGN RELOADED", stopsign_fences)
-
+            # TODO dinamic car location
+            '''
             if classids and 2 in classids:
                 # Save detected car's bounding box to a file
                 save_detected_car_boxes(boxes, classids)
                 parkedcar_box_pts = get_parkedcar_box_pts(C4_PARKED_CAR_FILE)
                 parkedcar_box_pts_np = np.array(parkedcar_box_pts)
+            '''
 
             '''
 
@@ -1124,8 +1129,8 @@ def exec_waypoint_nav_demo(args):
             #cv2.imwrite(filename, frame_obj) # Save the image
             image.save(f"{filename}/output_image_detected{frame}.jpg")
 
+            '''
             # TODO Save the images to disk.
-
             '''
             filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera', frame)
             frame_camera.save_to_disk(filename)
@@ -1145,6 +1150,8 @@ def exec_waypoint_nav_demo(args):
              os.makedirs(depth_dir)
             with open(output_file, 'wb') as file:
                 np.savetxt(file, frame_semseg, delimiter=',', fmt='%d')
+            '''
+
             '''
             filename_depth = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera_depth', frame)
 
@@ -1320,7 +1327,11 @@ def exec_waypoint_nav_demo(args):
                 #  # Compute the velocity profile for the path, and compute the waypoints.
                 #  # Use the lead vehicle to inform the velocity profile's dynamic obstacle handling.
                 #  # In this scenario, the only dynamic obstacle is the lead vehicle at index 1.
+
                 desired_speed = bp._goal_state[2]
+
+
+                print("desired_speed:", desired_speed)
                 lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
                 decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
                 local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state, bp._follow_lead_vehicle)
@@ -1389,8 +1400,8 @@ def exec_waypoint_nav_demo(args):
             else:
                 # Update live plotter with new feedback
                 # This way, you ensure that the roll function receives scalar values, one by one, for each parked car point.
-                for i in range(parkedcar_box_pts_np.shape[0]):
-                    trajectory_fig.roll("parkedcar_pts", parkedcar_box_pts_np[i, 0], parkedcar_box_pts_np[i, 1])
+               ## for i in range(parkedcar_box_pts_np.shape[0]):
+               ##     trajectory_fig.roll("parkedcar_pts", parkedcar_box_pts_np[i, 0], parkedcar_box_pts_np[i, 1])
                 #trajectory_fig.roll("parkedcar_pts", parkedcar_box_pts_np[:,0], parkedcar_box_pts_np[:,1])
                 trajectory_fig.roll("stopsign", stopsign_fences[0][0], stopsign_fences[0][1])
                # trajectory_fig.roll("stopsign_fence", [stopsign_fences[0][0], stopsign_fences[0][2]], [stopsign_fences[0][1], stopsign_fences[0][3]])
