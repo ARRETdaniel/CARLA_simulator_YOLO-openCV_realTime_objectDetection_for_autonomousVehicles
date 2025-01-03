@@ -1051,17 +1051,21 @@ def exec_waypoint_nav_demo(args):
             #frame_obj = np.array(on_car_camera.data, dtype=np.uint8)
             #frame_obj = np.array(sensor_data['CAMERA'].data).round().astype(np.uint8)
             frame_camera = sensor_data['CAMERA']
+            frame_obj_to_detect = np.array(frame_camera.data)
             #print("\nframe_camera:", frame_camera)
+            # TODO CAMERAS DATA
+            '''
             frame_depth = sensor_data['CameraDepth'].data
             print("\nframe_depth:", frame_depth)
 
             frame_semseg = sensor_data['CameraSemSeg'].data
             print("\nframe_semseg:", frame_semseg)
+            '''
 
-            frame_obj_to_detect = np.array(frame_camera.data)
             #frame_obj = np.array((on_car_camera.raw_data))
             #frame_obj = np.array(on_car_camera.data)
-            '''     # TODO DATA FORMATS
+            # TODO DATA FORMATS
+            '''
             print(sensor_data) # {'CAMERA': <carla.sensor.Image object at 0x000002970B91CBA8>}
             print(sensor_data['CAMERA']) # <carla.sensor.Image object at 0x000001A50B1DCDA0>
             print(sensor_data['CAMERA'].data) # [[[137 167 200]
@@ -1087,20 +1091,25 @@ def exec_waypoint_nav_demo(args):
             frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
 
             cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
-            print("\nidexs:",idxs)
-            print("\nconfidences:",confidences)
-            print("\nclassids:",classids)
-            print("\nboxes:", boxes)
+            #print("\nidexs:",idxs)
+            #print("\nconfidences:",confidences)
+            #print("\nclassids:",classids)
+            #print("\nboxes:", boxes)
+
+            # cheking if the stop sign is detected
             if frame == 100:
                 stopsign_fences = get_stop_sign(C4_STOP_SIGN_FILE)
                 bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE, stopsign_fences, LEAD_VEHICLE_LOOKAHEAD)
                 print("STOP SIGN RELOADED", stopsign_fences)
 
+            # TODO save parked car boxes
+            '''
             if classids and 2 in classids:
                 # Save detected car's bounding box to a file
                 save_detected_car_boxes(boxes, classids)
                 parkedcar_box_pts = get_parkedcar_box_pts(C4_PARKED_CAR_FILE)
                 parkedcar_box_pts_np = np.array(parkedcar_box_pts)
+            '''
 
             '''
 
@@ -1127,6 +1136,7 @@ def exec_waypoint_nav_demo(args):
             # TODO Save the images to disk.
 
             '''
+            '''
             filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera', frame)
             frame_camera.save_to_disk(filename)
 
@@ -1145,6 +1155,8 @@ def exec_waypoint_nav_demo(args):
              os.makedirs(depth_dir)
             with open(output_file, 'wb') as file:
                 np.savetxt(file, frame_semseg, delimiter=',', fmt='%d')
+            '''
+
             '''
             filename_depth = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera_depth', frame)
 
