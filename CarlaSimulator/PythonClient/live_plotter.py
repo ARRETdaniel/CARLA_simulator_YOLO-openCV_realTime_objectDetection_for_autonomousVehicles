@@ -10,9 +10,9 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 import pygame
 
 class Dynamic2DFigure():
-    def __init__(self, 
-                 figsize=(8,8), 
-                 edgecolor="black", 
+    def __init__(self,
+                 figsize=(8,8),
+                 edgecolor="black",
                  rect=[0.1, 0.1, 0.8, 0.8],
                  *args, **kwargs):
         self.graphs = {}
@@ -33,25 +33,25 @@ class Dynamic2DFigure():
         self.axis_equal = True
 
     def add_graph(self, name, label="", window_size=10, x0=None, y0=None,
-                  linestyle='-', linewidth=1, marker="", color="k", 
+                  linestyle='-', linewidth=1, marker="", color="k",
                   markertext=None, marker_text_offset=2):
         self.marker_text_offset = marker_text_offset
 
         if x0 is None or y0 is None:
             x0 = np.zeros(window_size)
             y0 = np.zeros(window_size)
-            new_graph, = self.ax.plot(x0, y0, label=label, 
+            new_graph, = self.ax.plot(x0, y0, label=label,
                                       linestyle=linestyle, linewidth=linewidth,
                                       marker=marker, color=color)
             if markertext is not None:
-                new_text = self.ax.text(x0[-1], y0[-1] + marker_text_offset, 
+                new_text = self.ax.text(x0[-1], y0[-1] + marker_text_offset,
                                          markertext)
         else:
-            new_graph, = self.ax.plot(x0, y0, label=label, 
+            new_graph, = self.ax.plot(x0, y0, label=label,
                                       linestyle=linestyle, linewidth=linewidth,
                                       marker=marker, color=color)
             if markertext is not None:
-                new_text = self.ax.text(x0[-1], y0[-1] + marker_text_offset, 
+                new_text = self.ax.text(x0[-1], y0[-1] + marker_text_offset,
                                          markertext)
 
         self.graphs[name]           = new_graph

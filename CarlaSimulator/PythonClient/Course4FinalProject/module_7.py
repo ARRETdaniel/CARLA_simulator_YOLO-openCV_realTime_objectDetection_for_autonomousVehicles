@@ -36,7 +36,8 @@ import colorsys
 from PIL import Image
 # Script level imports
 sys.path.append(os.path.abspath(sys.path[0] + '/..'))
-import live_plotter as lv   # Custom live plotting library
+#import live_plotter as lv   # Custom live plotting library
+import CarlaSimulator.PythonClient.live_plotter as lv   # Custom live plotting library
 from carla.sensor            import Camera
 from carla.client     import make_carla_client, VehicleControl
 from carla.settings   import CarlaSettings
