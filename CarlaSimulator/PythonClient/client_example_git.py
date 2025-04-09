@@ -23,7 +23,7 @@ from carla.settings import CarlaSettings
 from carla.tcp import TCPConnectionError
 from carla.util import print_over_same_line
 
-from Course4FinalProject.yolo_utils import infer_image, show_image
+from FinalProject.yolo_utils import infer_image, show_image
 
 
 # OPEN CV2 WITH DARKNET WEIGHTS ETC.
@@ -157,7 +157,7 @@ def run_carla_client(args):
                 print(on_car_camera) # <carla.sensor.Image object at 0x000001500B54F4E0>
                 print(frame_obj) # [[[137 167 200]
                 print(type(frame_obj)) # <class 'numpy.ndarray'>
-                
+
 
                 #height = on_car_camera.height
                 #width = on_car_camera.width

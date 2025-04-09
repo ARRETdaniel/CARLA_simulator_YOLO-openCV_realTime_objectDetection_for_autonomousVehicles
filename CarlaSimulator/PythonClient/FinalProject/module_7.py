@@ -26,17 +26,53 @@ import csv
 import matplotlib.pyplot as plt
 import controller2d
 import configparser
-import CarlaSimulator.PythonClient.Course4FinalProject.local_planner as local_planner
-import CarlaSimulator.PythonClient.Course4FinalProject.behavioural_planner as behavioural_planner
+import local_planner
+import behavioural_planner
+import cv2 # image processig
+import colorsys
 
+
+#test show  image console
+from PIL import Image
 # Script level imports
 sys.path.append(os.path.abspath(sys.path[0] + '/..'))
 import live_plotter as lv   # Custom live plotting library
-from carla            import sensor
+#import CarlaSimulator.PythonClient.live_plotter as lv   # Custom live plotting library
+from carla.sensor            import Camera
 from carla.client     import make_carla_client, VehicleControl
 from carla.settings   import CarlaSettings
 from carla.tcp        import TCPConnectionError
 from carla.controller import utils
+from carla.image_converter import to_rgb_array, to_bgra_array
+from PIL import Image
+
+'''TEST CAMERA'''
+from carla.util import print_over_same_line
+
+from yolo_utils import infer_image, show_image
+
+
+## darknet imports
+#from pexpect import popen_spawn
+
+# OPEN CV2 WITH DARKNET WEIGHTS ETC.
+
+# Give the configuration, weight and labels files for the model
+model_configuration = '.\yolov3-coco\yolov3.cfg';
+model_weights = '.\yolov3-coco\yolov3.weights';
+model_labels = '.\yolov3-coco\coco-labels';
+
+# Get the labels
+labels = open(model_labels).read().strip().split('\n')
+# Intializing colors to represent each label uniquely
+#colors = np.random.randint(0, 255, size=(len(labels), 3), dtype='uint8')
+# Load the weights and configutation to form the pretrained YOLOv3 model
+net = cv2.dnn.readNetFromDarknet(model_configuration, model_weights)
+# Get the output layer names of the model
+layer_names = net.getLayerNames()
+layer_names = [layer_names[i-1] for i in net.getUnconnectedOutLayers()]
+#layer_names = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+
 
 """
 Configurable params
@@ -71,7 +107,8 @@ WEATHERID = {
     "SOFTRAINSUNSET": 14,
 }
 SIMWEATHER = WEATHERID["CLEARNOON"]     # set simulation weather
-
+# change the start position. The Carla UE must be open with
+#  no parameters related to the map.
 PLAYER_START_INDEX = 1      # spawn index for player (keep to 1)
 FIGSIZE_X_INCHES   = 8      # x figure size of feedback in inches
 FIGSIZE_Y_INCHES   = 8      # y figure size of feedback in inches
@@ -80,7 +117,7 @@ PLOT_BOT           = 0.1
 PLOT_WIDTH         = 0.8
 PLOT_HEIGHT        = 0.8
 
-WAYPOINTS_FILENAME = 'course4_waypoints.txt'  # waypoint file to load
+WAYPOINTS_FILENAME = 'waypoints.txt'  # waypoint file to load
 DIST_THRESHOLD_TO_LAST_WAYPOINT = 2.0  # some distance from last position before
                                        # simulation ends
 
@@ -89,7 +126,7 @@ NUM_PATHS = 7
 BP_LOOKAHEAD_BASE      = 8.0              # m
 BP_LOOKAHEAD_TIME      = 2.0              # s
 PATH_OFFSET            = 1.5              # m
-CIRCLE_OFFSETS         = [-1.0, 1.0, 3.0] # m
+CIRCLE_OFFSETS         = [-1.0, 1.0, 3.0] # m, just one circle
 CIRCLE_RADII           = [1.5, 1.5, 1.5]  # m
 TIME_GAP               = 1.0              # s
 PATH_SELECT_WEIGHT     = 10
@@ -117,6 +154,14 @@ INTERP_DISTANCE_RES       = 0.01 # distance between interpolated points
 # controller output directory
 CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
+# CAMERAS
+WINDOW_WIDTH = 800
+WINDOW_HEIGHT = 600
+MINI_WINDOW_WIDTH = 320
+MINI_WINDOW_HEIGHT = 180
+
+
+
 
 def make_carla_settings(args):
     """Make a CarlaSettings object with the settings we need.
@@ -129,6 +174,35 @@ def make_carla_settings(args):
     if (NUM_PEDESTRIANS > 0 or NUM_VEHICLES > 0):
         get_non_player_agents_info = True
 
+    ''' TEST camera '''
+    # Now we want to add a couple of cameras to the player vehicle.
+    # We will collect the images produced by these cameras every
+    # frame.
+    # The default camera captures RGB images of the scene.
+    camera0 = Camera('CAMERA')
+    # Set image resolution in pixels.
+    camera0.set_image_size(WINDOW_WIDTH, WINDOW_HEIGHT)
+    #camera0.set_image_size(800, 600)
+    # Set its position relative to the car in meters.
+    camera0.set_position(2.0, 0.0, 1.4)
+    camera0.set_rotation(0.0, 0.0, 0.0)
+    #camera0.set_position(0.30, 0, 1.30)
+    settings.add_sensor(camera0)
+    # Let's add another camera producing ground-truth depth.
+    camera1 = Camera('CameraDepth', PostProcessing='Depth')
+    camera1.set_image_size(MINI_WINDOW_WIDTH, MINI_WINDOW_HEIGHT)
+    camera1.set_position(2.0, 0.0, 1.4)
+    camera1.set_rotation(0.0, 0.0, 0.0)
+    settings.add_sensor(camera1)
+
+    camera2 = Camera('CameraSemSeg', PostProcessing='SemanticSegmentation')
+    camera2.set_image_size(MINI_WINDOW_WIDTH, MINI_WINDOW_HEIGHT)
+    camera2.set_position(2.0, 0.0, 1.4)
+    camera2.set_rotation(0.0, 0.0, 0.0)
+    settings.add_sensor(camera2)
+
+    ''' TEST camera '''
+
     # Base level settings
     settings.set(
         SynchronousMode=True,
@@ -140,6 +214,8 @@ def make_carla_settings(args):
         WeatherId=SIMWEATHER,
         QualityLevel=args.quality_level)
     return settings
+
+
 
 class Timer(object):
     """ Timer Class
@@ -191,6 +267,29 @@ def get_current_pose(measurement):
     yaw = math.radians(measurement.player_measurements.transform.rotation.yaw)
 
     return (x, y, yaw)
+'''TEST CAMERA'''
+def print_measurements(measurements):
+    #number_of_agents = len(measurements.non_player_agents)
+    player_measurements = measurements.player_measurements
+    message = 'Vehicle at ({pos_x:.1f}, {pos_y:.1f})'
+   # message += '{speed:.0f} km/h, '
+   # message += 'Collision: {{vehicles={col_cars:.0f}, pedestrians={col_ped:.0f}, other={col_other:.0f}}}, '
+   # message += '{other_lane:.0f}% other lane, {offroad:.0f}% off-road, '
+   # message += '({agents_num:d} non-player agents in the scene)'
+
+    message = message.format(
+        pos_x=player_measurements.transform.location.x,
+        pos_y=player_measurements.transform.location.y,
+        #speed=player_measurements.forward_speed * 3.6, # m/s -> km/h
+        #col_cars=player_measurements.collision_vehicles,
+        #col_ped=player_measurements.collision_pedestrians,
+        #col_other=player_measurements.collision_other,
+        #other_lane=100 * player_measurements.intersection_otherlane,
+        #offroad=100 * player_measurements.intersection_offroad,
+        #agents_num=number_of_agents)
+        )
+    print_over_same_line(message)
+'''TEST CAMERA'''
 
 def get_start_pos(scene):
     """Obtains player start x,y, yaw pose from the scene
@@ -296,11 +395,145 @@ def write_collisioncount_file(collided_list):
     with open(file_name, 'w') as collision_file:
         collision_file.write(str(sum(collided_list)))
 
+def get_parkedcar_box_pts(file_path):
+    # Parked car(s) (X(m), Y(m), Z(m), Yaw(deg), RADX(m), RADY(m), RADZ(m))
+    parkedcar_data = None
+    parkedcar_box_pts = []  # List to store the box points of the parked cars
+
+    # Read parked car data from file
+    with open(file_path, 'r') as parkedcar_file:
+        next(parkedcar_file)  # Skip the header
+        parkedcar_reader = csv.reader(parkedcar_file, delimiter=',', quoting=csv.QUOTE_NONNUMERIC)
+        parkedcar_data = list(parkedcar_reader)
+
+        # Convert yaw angles to radians
+        for i in range(len(parkedcar_data)):
+            parkedcar_data[i][3] = parkedcar_data[i][3] * np.pi / 180.0
+
+    # Obtain parked car(s) box points for LP
+    for i in range(len(parkedcar_data)):
+        x = parkedcar_data[i][0]
+        y = parkedcar_data[i][1]
+        z = parkedcar_data[i][2]
+        yaw = parkedcar_data[i][3]
+        xrad = parkedcar_data[i][4]
+        yrad = parkedcar_data[i][5]
+        zrad = parkedcar_data[i][6]
+
+        # Define corner positions of the car's box in local coordinates
+        cpos = np.array([
+                [-xrad, -xrad, -xrad, 0,    xrad, xrad, xrad,  0],
+                [-yrad, 0,     yrad,  yrad, yrad, 0,    -yrad, -yrad]])
+
+        # Rotation matrix for yaw
+        rotyaw = np.array([
+                [np.cos(yaw), np.sin(yaw)],
+                [-np.sin(yaw), np.cos(yaw)]])
+
+        # Shift box points to the car's position
+        cpos_shift = np.array([
+                [x, x, x, x, x, x, x, x],
+                [y, y, y, y, y, y, y, y]])
+
+        # Rotate and shift the box points
+        cpos = np.add(np.matmul(rotyaw, cpos), cpos_shift)
+
+        # Append each corner point to the parkedcar_box_pts list
+        for j in range(cpos.shape[1]):
+            parkedcar_box_pts.append([cpos[0, j], cpos[1, j]])
+
+    return parkedcar_box_pts
+
+# TODO implemente get and set
+def get_stop_sign(file_path):
+    #############################################
+    # Load stop sign and parked vehicle parameters
+    # Convert to input params for LP
+    #############################################
+    # Stop sign (X(m), Y(m), Z(m), Yaw(deg))
+    stopsign_data = None
+    stopsign_fences = []     # [x0, y0, x1, y1]
+    with open(file_path, 'r') as stopsign_file:
+        next(stopsign_file)  # skip header
+        stopsign_reader = csv.reader(stopsign_file,
+                                     delimiter=',',
+                                     quoting=csv.QUOTE_NONNUMERIC)
+        stopsign_data = list(stopsign_reader)
+        # convert to rad
+        for i in range(len(stopsign_data)):
+            stopsign_data[i][3] = stopsign_data[i][3] * np.pi / 180.0
+    # obtain stop sign fence points for LP
+    for i in range(len(stopsign_data)):
+        x = stopsign_data[i][0]
+        y = stopsign_data[i][1]
+        z = stopsign_data[i][2]
+        yaw = stopsign_data[i][3] + np.pi / 2.0  # add 90 degrees for fence
+        spos = np.array([
+                [0, 0                       ],
+                [0, C4_STOP_SIGN_FENCELENGTH]])
+        rotyaw = np.array([
+                [np.cos(yaw), np.sin(yaw)],
+                [-np.sin(yaw), np.cos(yaw)]])
+        spos_shift = np.array([
+                [x, x],
+                [y, y]])
+        spos = np.add(np.matmul(rotyaw, spos), spos_shift)
+        stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
+    return stopsign_fences
+
+def save_detected_car_boxes(boxes, classids, output_file=C4_PARKED_CAR_FILE):
+    """
+    Saves detected car bounding boxes to a text file.
+    Only writes boxes corresponding to cars (classid == 2).
+
+    Parameters:
+    - frame_obj_to_detect: The frame where detection happens.
+    - boxes: Detected bounding boxes.
+    - classids: Detected class IDs.
+    - output_file: File to store the detected car boxes (default 'detected_car_boxes.txt').
+    """
+    # Open the file to write the detected car bounding boxes
+    with open(output_file, 'w') as file:
+        # Write header
+        file.write("X(m), Y(m), Z(m), YAW(deg), BOX_X_RADIUS(m), BOX_Y_RADIUS(m), BOX_Z_RADIUS(m)\n")
+
+        # Loop through detected objects and save only cars
+        for i, classid in enumerate(classids):
+            if classid == 2:  # Car detected
+                x, y, w, h = boxes[i]
+
+                # Convert the bounding box data to match parked car format
+                # Assuming Z 38.10 and Yaw 180.0, and radius in X and Y are half of width and height
+                file.write(f"{x}, {y}, 38.10, 180.0, {w/2}, {h/2}, 0\n")
+
+
+def generate_accessible_colors(num_colors):
+    colors = []
+    for i in range(num_colors):
+        # Evenly space hues for distinguishable colors
+        hue = i / num_colors
+        saturation = 0.7  # Keep saturation high enough for vivid colors
+        lightness = 0.5   # Medium lightness for good contrast (neither too dark nor too light)
+
+        # Convert HSL to RGB
+        rgb = colorsys.hls_to_rgb(hue, lightness, saturation)
+
+        # Convert RGB from 0-1 range to 0-255 range and cast to uint8
+        rgb = tuple(int(255 * x) for x in rgb)
+        colors.append(rgb)
+
+    return np.array(colors, dtype='uint8')
+
+
 def exec_waypoint_nav_demo(args):
     """ Executes waypoint navigation demo.
     """
 
     with make_carla_client(args.host, args.port) as client:
+        # Directory to save output files
+        output_dir = "output_frames"
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
         print('Carla client connected.')
 
         settings = make_carla_settings(args)
@@ -315,9 +548,9 @@ def exec_waypoint_nav_demo(args):
         # player start information
         player_start = PLAYER_START_INDEX
 
-        client.start_episode(player_start)
+        # client.start_episode(player_start)
 
-        time.sleep(CLIENT_WAIT_TIME);
+        # time.sleep(CLIENT_WAIT_TIME)
 
         # Notify the server that we want to start the episode at the
         # player_start index. This function blocks until the server is ready
@@ -325,6 +558,39 @@ def exec_waypoint_nav_demo(args):
         print('Starting new episode at %r...' % scene.map_name)
         client.start_episode(player_start)
 
+        '''CV2 TEST'''
+        '''
+        measurement_data, sensor_data = client.read_data()
+
+        print_measurements(measurement_data)
+         # Save the images to disk if requested.
+         #if 1==1:
+        image = sensor_data['CameraRGB']
+
+        camera_data = {'image': np.zeros((image.height, image.width, 4))}
+
+            #img = Image.open(image)
+            #img.show()
+            # https://github.com/carla-simulator/carla/issues/144
+            #print("image: hight:", image.height)
+        #image.listen(lambda image: camera_callback(image, camera_data))
+
+        cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
+        cv2.imshow('RGB Camera', image)
+        '''
+        '''
+        cv2.waitKey(1)
+        while True:
+             cv2.imshow('RGB Camera', camera_data['image'])
+
+             if cv2.waitKey(1) == ord('q'):
+                 break
+
+        cv2.destroyAllWindows ()
+        '''
+
+
+        '''CV2 TEST'''
         #############################################
         # Load Configurations
         #############################################
@@ -347,6 +613,9 @@ def exec_waypoint_nav_demo(args):
         # Set options
         live_plot_timer = Timer(live_plot_period)
 
+        stopsign_fences = get_stop_sign(C4_STOP_SIGN_FILE)
+        #stopsign_fences = None
+        '''
         #############################################
         # Load stop sign and parked vehicle parameters
         # Convert to input params for LP
@@ -381,7 +650,8 @@ def exec_waypoint_nav_demo(args):
                     [y, y]])
             spos = np.add(np.matmul(rotyaw, spos), spos_shift)
             stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
-
+        '''
+        '''
         # Parked car(s) (X(m), Y(m), Z(m), Yaw(deg), RADX(m), RADY(m), RADZ(m))
         parkedcar_data = None
         parkedcar_box_pts = []      # [x,y]
@@ -417,8 +687,10 @@ def exec_waypoint_nav_demo(args):
             for j in range(cpos.shape[1]):
                 parkedcar_box_pts.append([cpos[0,j], cpos[1,j]])
 
+        '''
+        parkedcar_box_pts = get_parkedcar_box_pts(C4_PARKED_CAR_FILE)
         #############################################
-        # Load Waypoints
+        # Load Waypoints:
         #############################################
         # Opens the waypoint file and stores it to "waypoints"
         waypoints_file = WAYPOINTS_FILENAME
@@ -446,12 +718,21 @@ def exec_waypoint_nav_demo(args):
         num_iterations = ITER_FOR_SIM_TIMESTEP
         if (ITER_FOR_SIM_TIMESTEP < 1):
             num_iterations = 1
-
+        '''TEST CAMERA
+        SIMULATION_TIME_STEP = sim_duration / float(num_iterations)
+        print("SERVER SIMULATION STEP APPROXIMATION: " + \
+              str(SIMULATION_TIME_STEP))
+        TOTAL_EPISODE_FRAMES = int((TOTAL_RUN_TIME + WAIT_TIME_BEFORE_START) /\
+                               SIMULATION_TIME_STEP) + TOTAL_FRAME_BUFFER
+        TEST CAMERA'''
         # Gather current data from the CARLA server. This is used to get the
         # simulator starting game time. Note that we also need to
         # send a command back to the CARLA server because synchronous mode
         # is enabled.
+
         measurement_data, sensor_data = client.read_data()
+
+
         sim_start_stamp = measurement_data.game_timestamp / 1000.0
         # Send a control command to proceed to next iteration.
         # This mainly applies for simulations that are in synchronous mode.
@@ -472,11 +753,39 @@ def exec_waypoint_nav_demo(args):
         # will elapse before the simulation should end based on various
         # parameters that we set in the beginning.
         SIMULATION_TIME_STEP = sim_duration / float(num_iterations)
-        print("SERVER SIMULATION STEP APPROXIMATION: " + \
-              str(SIMULATION_TIME_STEP))
+        #print("SERVER SIMULATION STEP APPROXIMATION: " + \
+        #      str(SIMULATION_TIME_STEP))
         TOTAL_EPISODE_FRAMES = int((TOTAL_RUN_TIME + WAIT_TIME_BEFORE_START) /\
                                SIMULATION_TIME_STEP) + TOTAL_FRAME_BUFFER
+        '''TEST CAMERA
+        ##if True:
+        ##    for name, measurement in sensor_data.items():
+        ##        filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, name, num_iterations)
+        ##        measurement.save_to_disk(filename)
 
+        for frame in range(0, TOTAL_EPISODE_FRAMES):
+         # Read the data produced by the server this frame.
+            measurements, sensor_data = client.read_data()
+         # Print some of the measurements.
+            print_measurements(measurements)
+         # Save the images to disk if requested.
+         #if 1==1:
+         ######if args.save_images_to_disk:
+            if True:
+                for name, measurement in sensor_data.items():
+                    filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, name, frame)
+                    measurement.save_to_disk(filename)
+         # We can access the encoded data of a given image as numpy
+         # array using its "data" property. For instance, to get the
+         # depth value (normalized) at pixel X, Y
+         #
+         #     depth_array = sensor_data['CameraDepth'].data
+         #     value_at_pixel = depth_array[Y, X]
+         #
+         # Now we have to send the instructions to control the vehicle.
+         # If we are in synchronous mode the server will pause the
+         # simulation until we send this control.
+        TEST CAMERA  '''
         #############################################
         # Frame-by-Frame Iteration and Initialization
         #############################################
@@ -545,19 +854,23 @@ def exec_waypoint_nav_demo(args):
                                  marker_text_offset=1)
         # Add stop sign position
         trajectory_fig.add_graph("stopsign", window_size=1,
-                                 x0=[stopsign_fences[0][0]], y0=[stopsign_fences[0][1]],
+                                # x0=[stopsign_fences[0][0]], y0=[stopsign_fences[0][1]],
                                  marker="H", color="r",
                                  markertext="Stop Sign", marker_text_offset=1)
+        '''
         # Add stop sign "stop line"
         trajectory_fig.add_graph("stopsign_fence", window_size=1,
-                                 x0=[stopsign_fences[0][0], stopsign_fences[0][2]],
-                                 y0=[stopsign_fences[0][1], stopsign_fences[0][3]],
+
+                                 #x0=[stopsign_fences[0][0], stopsign_fences[0][2]],
+                                 #y0=[stopsign_fences[0][1], stopsign_fences[0][3]],
+
                                  color="r")
+        '''
 
         # Load parked car points
         parkedcar_box_pts_np = np.array(parkedcar_box_pts)
         trajectory_fig.add_graph("parkedcar_pts", window_size=parkedcar_box_pts_np.shape[0],
-                                 x0=parkedcar_box_pts_np[:,0], y0=parkedcar_box_pts_np[:,1],
+                                 #x0=parkedcar_box_pts_np[:,0], y0=parkedcar_box_pts_np[:,1],
                                  linestyle="", marker="+", color='b')
 
         # Add lookahead path
@@ -622,13 +935,14 @@ def exec_waypoint_nav_demo(args):
                                         A_MAX,
                                         SLOW_SPEED,
                                         STOP_LINE_BUFFER)
-        bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE,
-                                                    stopsign_fences,
-                                                    LEAD_VEHICLE_LOOKAHEAD)
+        bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE, stopsign_fences, LEAD_VEHICLE_LOOKAHEAD)
+        #bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE, LEAD_VEHICLE_LOOKAHEAD)
 
         #############################################
         # Scenario Execution Loop
         #############################################
+        colors = generate_accessible_colors(len(labels))
+
 
         # Iterate the frames until the end of the waypoints is reached or
         # the TOTAL_EPISODE_FRAMES is reached. The controller simulation then
@@ -643,10 +957,266 @@ def exec_waypoint_nav_demo(args):
         prev_collision_vehicles    = 0
         prev_collision_pedestrians = 0
         prev_collision_other       = 0
+        count_obg_detection = 0
 
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
+
+            '''TEST CAMERA'''
+            #print_measurements(measurement_data)
+         # Save the images to disk if requested.
+         #if 1==1:
+
+
+            #on_car_camera = sensor_data['CAMERA']
+            #camera_data = {'image': np.zeros((camera.height, camera.width, 4))}
+
+            #img = Image.open(image)
+            #img.show()
+            # https://github.com/carla-simulator/carla/issues/144
+            #print("image: hight:", image.height)
+            #sensor_data['CameraRGB'].listen(lambda image: camera_callback(camera, camera_data))
+            '''
+            cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
+            cv2.imshow('RGB Camera', camera_data['image'])
+            cv2.waitKey(1)
+
+            while True:
+                cv2.imshow('RGB Camera', camera_data['image'])
+
+                if cv2.waitKey(1) == ord('q'):
+                    break
+
+            cv2.destroyAllWindows ()
+            '''
+
+
+            #print("image: raw data:", image.raw_data)
+            #time.sleep(2.5)
+            #print("image: numpy array:", image.data)
+            #time.sleep(2.5)
+
+            #print("image: RGB array:", image)
+            #time.sleep(2.5)
+
+         ######if args.save_images_to_disk:
+            #print("sensor data:", sensor_data.items())
+           # time.sleep(2.5)
+
+            #image = sensor_data['CameraRGB']
+                #value_at_pixel = depth_array[Y, X]
+                #
+            #print("image: RGB array:", image.height)
+          #  print("image: RGB array:", image.raw_data)
+           # print("image: RGB array:", image.width)
+            #camera = sensor_data['CameraRGB']
+            #print("image: RGB array:", camera)
+
+            #camera0.listen(lambda measurement: measurement.save_to_disk('out/%06d.png' % measurement.frame))
+            #cv2.namedWindow('RGB Camera', cv2.WINDOW_AUTOSIZE)
+            #cv2.imshow('RGB Camera', image.data)
+            # Convert the image to an RGB array
+
+            # Print the RGB array
+           # darknet_process.send(bgra_array+b'\n')
+            '''
+            for name, measurement in sensor_data.items():
+                filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, name, frame)
+                #filename = args.out_filename_format.format(np.random.randint(0, TOTAL_EPISODE_FRAMES), name, frame)
+                measurement.save_to_disk(filename)
+            '''
+            #print(on_car_camera.data)
+            #print(on_car_camera.width)
+            #print(on_car_camera.height)
+            #img = cv2.imread(on_car_camera.data)
+            #print(type(np.array(on_car_camera.data)))
+            #print('OOOOOOOOOOOOOOOOO')
+            #print(type(np.ndarray(on_car_camera.data)))
+
+
+            '''
+            try:
+                #height, width = img.shape[:2]
+            except:
+                raise 'Image cannot be loaded! Please check the path provided!'
+            finally:
+            '''
+            #img = np.array(on_car_camera.data)
+            #vid = cv2.VideoCapture(img)
+            #vid = on_car_camera.data
+            #print(vid)
+
+            #print(type(on_car_camera.raw_data))
+            #print(type(on_car_camera.data))
+            #frame_obj = np.array(on_car_camera.data, dtype=np.uint8)
+            #frame_obj = np.array(sensor_data['CAMERA'].data).round().astype(np.uint8)
+            frame_camera = sensor_data['CAMERA']
+            frame_obj_to_detect = np.array(frame_camera.data)
+            #print("\nframe_camera:", frame_camera)
+            # TODO CAMERAS DATA
+            '''
+            frame_depth = sensor_data['CameraDepth'].data
+            print("\nframe_depth:", frame_depth)
+
+            frame_semseg = sensor_data['CameraSemSeg'].data
+            print("\nframe_semseg:", frame_semseg)
+            '''
+
+            #frame_obj = np.array((on_car_camera.raw_data))
+            #frame_obj = np.array(on_car_camera.data)
+            # TODO DATA FORMATS
+            '''
+            print(sensor_data) # {'CAMERA': <carla.sensor.Image object at 0x000002970B91CBA8>}
+            print(sensor_data['CAMERA']) # <carla.sensor.Image object at 0x000001A50B1DCDA0>
+            print(sensor_data['CAMERA'].data) # [[[137 167 200]
+            print(on_car_camera.data) # [[[136 166 200]
+            print(on_car_camera) # <carla.sensor.Image object at 0x000001500B54F4E0>
+            print(frame_obj) # [[[137 167 200]
+            print(type(frame_obj)) # <class 'numpy.ndarray'>
+            '''
+
+            #height = on_car_camera.height
+            #width = on_car_camera.width
+
+            if count_obg_detection == 0:
+                frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names, \
+		    						sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels)
+                count_obg_detection += 1
+            else:
+                frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names, \
+		    						sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels, boxes, confidences, classids, idxs, infer=False)
+                count_obg_detection = (count_obg_detection + 1) % 6
+
+            #https://stackoverflow.com/questions/50963283/opencv-imshow-doesnt-need-convert-from-bgr-to-rgb
+            frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
+
+            cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
+            #print("\nidexs:",idxs)
+            #print("\nconfidences:",confidences)
+            #print("\nclassids:",classids)
+            #print("\nboxes:", boxes)
+
+            # cheking if the stop sign is detected
+            if frame == 100:
+                stopsign_fences = get_stop_sign(C4_STOP_SIGN_FILE)
+                bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE, stopsign_fences, LEAD_VEHICLE_LOOKAHEAD)
+                print("STOP SIGN RELOADED", stopsign_fences)
+
+            # TODO save parked car boxes
+            '''
+            if classids and 2 in classids:
+                # Save detected car's bounding box to a file
+                save_detected_car_boxes(boxes, classids)
+                parkedcar_box_pts = get_parkedcar_box_pts(C4_PARKED_CAR_FILE)
+                parkedcar_box_pts_np = np.array(parkedcar_box_pts)
+            '''
+
+            '''
+
+
+                with open(C4_PARKED_CAR_FILE, 'w') as file:
+                    file.write("X(m), Y(m), Z(m), YAW(deg), BOX_X_RADIUS(m), BOX_Y_RADIUS(m), BOX_Z_RADIUS(m)\n")
+                    for i, classid in enumerate(classids):
+                        if classid == 2:  # Car detected
+                            x, y, w, h = boxes[i]
+                            # Example transformation of bounding box to match the parked car format
+                            file.write(f"{x}, {y}, 0, 0, {w/2}, {h/2}, 0\n")  # Assuming Z and Yaw are 0 for simplicity
+            '''
+
+            '''
+            # # TODO Save the images obj detected to disk.
+            # https://stackoverflow.com/questions/71413891/convert-rgb-values-to-jpg-image-in-python
+            filename = "./_out/output_image"
+            #os.mkdir(filename)
+            image_RGB = frame_obj_to_detect
+            image = Image.fromarray(image_RGB.astype('uint8')).convert('RGB')
+            #cv2.imwrite(filename, frame_obj) # Save the image
+            image.save(f"{filename}/output_image_detected{frame}.jpg")
+
+            # TODO Save the images to disk.
+
+            '''
+            '''
+            filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera', frame)
+            frame_camera.save_to_disk(filename)
+
+            output_path = "_out/on_car_camera_depth"
+            output_file = os.path.join(output_path, f"frame_{frame}.dat")
+            depth_dir = os.path.dirname(output_file)
+            if not os.path.exists(depth_dir):
+             os.makedirs(depth_dir)
+            with open(output_file, 'wb') as file:
+                np.savetxt(file, frame_depth, delimiter=',', fmt='%0.8f')
+
+            output_path = "_out/on_car_camera_semseg"
+            output_file = os.path.join(output_path, f"frame_{frame}.dat")
+            depth_dir = os.path.dirname(output_file)
+            if not os.path.exists(depth_dir):
+             os.makedirs(depth_dir)
+            with open(output_file, 'wb') as file:
+                np.savetxt(file, frame_semseg, delimiter=',', fmt='%d')
+            '''
+
+            '''
+            filename_depth = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera_depth', frame)
+
+            depth_dir = os.path.dirname(filename_depth)
+            if not os.path.exists(depth_dir):
+             os.makedirs(depth_dir)
+            with open(filename_depth + ".txt", "wb") as f:
+                np.save(f, frame_depth)
+            #frame_depth.save_to_disk(filename)
+            filename_semseg = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera_semseg', frame)
+            semseg_dir = os.path.dirname(filename_semseg)
+            if not os.path.exists(semseg_dir):
+             os.makedirs(semseg_dir)
+            with open(filename_semseg + ".txt", "wb") as f:
+                np.save(f, frame_semseg)
+            #frame_semseg.save_to_disk(filename)
+
+            # TODO Save the infer to disk.
+
+            # Save the data as a text file
+            output_file = os.path.join(output_dir, f"frame_{frame}.txt")
+            with open(output_file, "w") as f:
+                f.write(f"Frame {frame}:\n")
+                f.write("Boxes:\n")
+                for box in boxes:
+                    f.write(f"{box}\n")
+                f.write("Confidences:\n")
+                for confidence in confidences:
+                    f.write(f"{confidence}\n")
+                f.write("Class IDs:\n")
+                for classid in classids:
+                    f.write(f"{classid}\n")
+                f.write("Indexes:\n")
+                for idx in idxs:
+                    f.write(f"{idx}\n")
+            '''
+            '''
+            for name, measurement in sensor_data.items():
+                print("measurement")
+                print(measurement) # <carla.sensor.Image object at 0x000001910EEF1710>
+
+                print("measurement.daata:")
+                print(measurement.data) # [[[136 166 200]...
+
+            '''
+
+
+            #vid.release()
+
+            ''' WORKING FOR IMAGES
+            img = np.array(on_car_camera.data)
+            img, _, _, _, _ = infer_image(net, layer_names, on_car_camera.height, on_car_camera.width, img, colors, labels)
+            show_image(img)
+            '''
+
+            ######## OLD WORKING#####bgra_array = to_bgra_array(on_car_camera)
+            ######## OLD WORKING#####cv2.imshow('RGB Camera', bgra_array)
+            '''TEST CAMERA'''
+
 
             # Update pose and timestamp
             prev_timestamp = current_timestamp
@@ -723,49 +1293,50 @@ def exec_waypoint_nav_demo(args):
                 # TODO: Uncomment each code block between the dashed lines to run the planner.
                 # --------------------------------------------------------------
                 #  # Compute open loop speed estimate.
-                #  open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
+                open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
 
                 #  # Calculate the goal state set in the local frame for the local planner.
                 #  # Current speed should be open loop for the velocity profile generation.
-                #  ego_state = [current_x, current_y, current_yaw, open_loop_speed]
+                ego_state = [current_x, current_y, current_yaw, open_loop_speed]
 
                 #  # Set lookahead based on current speed.
-                #  bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
+                bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
 
                 #  # Perform a state transition in the behavioural planner.
-                #  bp.transition_state(waypoints, ego_state, current_speed)
+                bp.transition_state(waypoints, ego_state, current_speed)
 
                 #  # Check to see if we need to follow the lead vehicle.
-                #  bp.check_for_lead_vehicle(ego_state, lead_car_pos[1])
+                bp.check_for_lead_vehicle(ego_state, lead_car_pos[1])
 
                 #  # Compute the goal state set from the behavioural planner's computed goal state.
-                #  goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
+                # Conformal Lattice Planning
+                goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
 
                 #  # Calculate planned paths in the local frame.
-                #  paths, path_validity = lp.plan_paths(goal_state_set)
+                paths, path_validity = lp.plan_paths(goal_state_set)
 
                 #  # Transform those paths back to the global frame.
-                #  paths = local_planner.transform_paths(paths, ego_state)
+                paths = local_planner.transform_paths(paths, ego_state)
 
                 #  # Perform collision checking.
-                #  collision_check_array = lp._collision_checker.collision_check(paths, [parkedcar_box_pts])
+                collision_check_array = lp._collision_checker.collision_check(paths, [parkedcar_box_pts])
 
                 #  # Compute the best local path.
-                #  best_index = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
+                best_index = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
                 #  # If no path was feasible, continue to follow the previous best path.
-                #  if best_index == None:
-                #      best_path = lp._prev_best_path
-                #  else:
-                #      best_path = paths[best_index]
-                #      lp._prev_best_path = best_path
+                if best_index == None:
+                    best_path = lp._prev_best_path
+                else:
+                    best_path = paths[best_index]
+                    lp._prev_best_path = best_path
 
                 #  # Compute the velocity profile for the path, and compute the waypoints.
                 #  # Use the lead vehicle to inform the velocity profile's dynamic obstacle handling.
                 #  # In this scenario, the only dynamic obstacle is the lead vehicle at index 1.
-                #  desired_speed = bp._goal_state[2]
-                #  lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
-                #  decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
-                #  local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state, bp._follow_lead_vehicle)
+                desired_speed = bp._goal_state[2]
+                lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
+                decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
+                local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state, bp._follow_lead_vehicle)
                 # --------------------------------------------------------------
 
                 if local_waypoints != None:
@@ -830,6 +1401,12 @@ def exec_waypoint_nav_demo(args):
                 pass
             else:
                 # Update live plotter with new feedback
+                # This way, you ensure that the roll function receives scalar values, one by one, for each parked car point.
+                for i in range(parkedcar_box_pts_np.shape[0]):
+                    trajectory_fig.roll("parkedcar_pts", parkedcar_box_pts_np[i, 0], parkedcar_box_pts_np[i, 1])
+                #trajectory_fig.roll("parkedcar_pts", parkedcar_box_pts_np[:,0], parkedcar_box_pts_np[:,1])
+                trajectory_fig.roll("stopsign", stopsign_fences[0][0], stopsign_fences[0][1])
+               # trajectory_fig.roll("stopsign_fence", [stopsign_fences[0][0], stopsign_fences[0][2]], [stopsign_fences[0][1], stopsign_fences[0][3]])
                 trajectory_fig.roll("trajectory", current_x, current_y)
                 trajectory_fig.roll("car", current_x, current_y)
                 if lead_car_pos:    # If there exists a lead car, plot it
@@ -957,6 +1534,12 @@ def main():
         type=lambda s: s.title(),
         default='Low',
         help='graphics quality level.')
+    '''test camera'''
+    argparser.add_argument(
+        '-i', '--images-to-disk',
+        action='store_true',
+        dest='save_images_to_disk',
+        help='save images (and Lidar data if active) to disk')
     argparser.add_argument(
         '-c', '--carla-settings',
         metavar='PATH',
