@@ -8,7 +8,7 @@ Ubuntu:
 ./CarlaUE4.sh /Game/Maps/Course4 -windowed -carla-server -benchmark -fps=30
 
 Windows:
---------
+-------- CarlaSimulator
 CarlaUE4.exe /Game/Maps/Course4 -windowed -carla-server -benchmark -fps=30
 
 Running the Python client (and controller)
@@ -23,5 +23,5 @@ Ubuntu (use alternative python commands if the command below does not work, as d
 python3 module_7.py
 
 Windows (use alternative python commands if the command below does not work, as described in the CARLA install guide):
---------
+-------- CarlaSimulator\PythonClient\FinalProject
 python module_7.py
