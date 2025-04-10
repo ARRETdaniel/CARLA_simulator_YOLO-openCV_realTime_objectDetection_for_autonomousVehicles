@@ -70,6 +70,5 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 
 ## Acknowledgments
 
-We would like to thank the instructors and contributors of the Self-Driving Cars Specialization for their valuable resources and guidance.
+We would like to thank the instructors and contributors of the [Self-Driving Cars Specialization](https://www.coursera.org/specializations/self-driving-cars) for their valuable resources and guidance.
 
-Happy learning and coding!
