@@ -480,7 +480,8 @@ def get_stop_sign(file_path):
         spos = np.add(np.matmul(rotyaw, spos), spos_shift)
         stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
     return stopsign_fences
-
+''' this def does not  work it does not take into account the difference between the coordinates frame of the
+    carla and YOLO boxes (yolo camera)
 def save_detected_car_boxes(boxes, classids, output_file=C4_PARKED_CAR_FILE):
     """
     Saves detected car bounding boxes to a text file.
@@ -505,6 +506,7 @@ def save_detected_car_boxes(boxes, classids, output_file=C4_PARKED_CAR_FILE):
                 # Convert the bounding box data to match parked car format
                 # Assuming Z 38.10 and Yaw 180.0, and radius in X and Y are half of width and height
                 file.write(f"{x}, {y}, 38.10, 180.0, {w/2}, {h/2}, 0\n")
+'''
 
 
 def generate_accessible_colors(num_colors):
@@ -1098,12 +1100,14 @@ def exec_waypoint_nav_demo(args):
             #print("\nboxes:", boxes)
 
             # cheking if the stop sign is detected
+            """ there is no def set stop sign
             if frame == 100:
                 stopsign_fences = get_stop_sign(C4_STOP_SIGN_FILE)
                 bp = behavioural_planner.BehaviouralPlanner(BP_LOOKAHEAD_BASE, stopsign_fences, LEAD_VEHICLE_LOOKAHEAD)
                 print("STOP SIGN RELOADED", stopsign_fences)
 
             # TODO save parked car boxes
+            """
             '''
             if classids and 2 in classids:
                 # Save detected car's bounding box to a file
