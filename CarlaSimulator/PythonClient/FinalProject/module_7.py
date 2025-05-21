@@ -50,7 +50,8 @@ from PIL import Image
 from carla.util import print_over_same_line
 
 from yolo_utils import infer_image, show_image, display_object_warnings
-
+from performance_metrics import PerformanceMetrics
+from results_reporter import ResultsReporter
 
 ## darknet imports
 #from pexpect import popen_spawn
@@ -210,7 +211,7 @@ def make_carla_settings(args):
         NumberOfVehicles=NUM_VEHICLES,
         NumberOfPedestrians=NUM_PEDESTRIANS,
         SeedVehicles=SEED_VEHICLES,
-        SeedPedestrians=SEED_PEDESTRIANS,
+        SeedPedestrians=SEED_VEHICLES,
         WeatherId=SIMWEATHER,
         QualityLevel=args.quality_level)
     return settings
@@ -536,6 +537,10 @@ def exec_waypoint_nav_demo(args):
         output_dir = "output_frames"
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
+
+        # Initialize the performance metrics tracker
+        metrics = PerformanceMetrics("metrics_output")
+
         print('Carla client connected.')
 
         settings = make_carla_settings(args)
@@ -769,8 +774,6 @@ def exec_waypoint_nav_demo(args):
          # Read the data produced by the server this frame.
             measurements, sensor_data = client.read_data()
          # Print some of the measurements.
-            print_measurements(measurements)
-         # Save the images to disk if requested.
          #if 1==1:
          ######if args.save_images_to_disk:
             if True:
@@ -1083,14 +1086,18 @@ def exec_waypoint_nav_demo(args):
 
             if count_obg_detection == 0:
                 frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names,
-                                            sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels)
+                                        sensor_data['CAMERA'].height, sensor_data['CAMERA'].width,
+                                        frame_obj_to_detect, colors, labels, metrics=metrics)
                 count_obg_detection += 1
             else:
                 frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names,
-                                            sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels, boxes, confidences, classids, idxs, infer=False)
+                                        sensor_data['CAMERA'].height, sensor_data['CAMERA'].width,
+                                        frame_obj_to_detect, colors, labels, boxes, confidences,
+                                        classids, idxs, infer=False, metrics=metrics)
                 count_obg_detection = (count_obg_detection + 1) % 6
             # Add this line to check for stop signs and display warning
-            frame_obj_to_detect = display_object_warnings(frame_obj_to_detect, boxes, confidences, classids, idxs)
+            frame_obj_to_detect = display_object_warnings(frame_obj_to_detect, boxes, confidences,
+                                                     classids, idxs, metrics=metrics)
 
             # Convert from RGB to BGR for OpenCV display
             frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
@@ -1501,6 +1508,16 @@ def exec_waypoint_nav_demo(args):
         write_trajectory_file(x_history, y_history, speed_history, time_history,
                               collided_flag_history)
         write_collisioncount_file(collided_flag_history)
+
+    print("Generating performance metrics summary...")
+    metrics.generate_summary()
+    metrics.visualize_metrics()
+
+    print("Generating results report...")
+    reporter = ResultsReporter(metrics_dir="metrics_output", report_dir="results_report")
+    reporter.generate_report()
+
+    print("Testing complete - results available in 'results_report/performance_report.html'")
 
 def main():
     """Main function.

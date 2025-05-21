@@ -1,0 +1,12 @@
+avg_detection_time,0.24171957519233034
+max_detection_time,0.5897805690765381
+min_detection_time,0.19157004356384277
+avg_fps,4.137025307959956
+total_detections,270
+avg_detections_per_frame,0.8794788273615635
+detection_classes_distribution,{2: 212, 0: 7, 7: 5, 13: 12, 11: 22, 29: 6, 9: 6}
+avg_confidence,0.7534904029375564
+total_warnings,1302
+warning_types_distribution,{'car': 996, 'person': 36, 'truck': 30, 'bench': 72, 'stop sign': 132, 'traffic light': 36}
+warning_severities,{'HIGH': 12, 'MEDIUM': 36, 'LOW': 1254}
+total_runtime_seconds,509.833475

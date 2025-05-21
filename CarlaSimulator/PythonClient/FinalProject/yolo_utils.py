@@ -4,6 +4,7 @@ import cv2 as cv
 import subprocess
 import time
 import os
+from performance_metrics import PerformanceMetrics
 
 def show_image(img):
     cv.imshow("Image", img)
@@ -63,7 +64,7 @@ def generate_boxes_confidences_classids(outs, height, width, tconf):
 
 #ef infer_image(net, layer_names, height, width, img, colors, labels, FLAGS,
 def infer_image(net, layer_names, height, width, img, colors, labels,
-            boxes=None, confidences=None, classids=None, idxs=None, infer=True):
+            boxes=None, confidences=None, classids=None, idxs=None, infer=True, metrics=None):
     confidence = 0.5
     threshold = 0.3
     if infer:
@@ -75,21 +76,20 @@ def infer_image(net, layer_names, height, width, img, colors, labels,
         net.setInput(blob)
 
         # Getting the outputs from the output layers
-        start = time.time()
+        start_time = time.time()
         outs = net.forward(layer_names)
-        end = time.time()
-        print ("[INFO] YOLOv3 took {:6f} seconds".format(end - start))
-        '''
-        if FLAGS.show_time:
-        '''
+        detection_time = time.time() - start_time
+        print(f"[INFO] YOLOv3 took {detection_time:.6f} seconds")
 
         # Generate the boxes, confidences, and classIDs
         boxes, confidences, classids = generate_boxes_confidences_classids(outs, height, width, confidence)
 
-        #print(img)
-
         # Apply Non-Maxima Suppression to suppress overlapping bounding boxes
         idxs = cv.dnn.NMSBoxes(boxes, confidences, confidence, threshold)
+
+        # Record metrics if a metrics object is provided
+        if metrics:
+            metrics.record_detection_metrics(detection_time, boxes, confidences, classids, idxs)
 
     if boxes is None or confidences is None or idxs is None or classids is None:
         raise '[ERROR] Required variables are set to None before drawing boxes on images.'
@@ -99,7 +99,7 @@ def infer_image(net, layer_names, height, width, img, colors, labels,
 
     return img, boxes, confidences, classids, idxs
 
-def display_object_warnings(frame, boxes, confidences, classids, idxs):
+def display_object_warnings(frame, boxes, confidences, classids, idxs, metrics=None):
     """
     Displays warning messages for various detected objects with severity based on
     estimated proximity to the ego vehicle.
@@ -110,10 +110,18 @@ def display_object_warnings(frame, boxes, confidences, classids, idxs):
         confidences: Confidence scores for each detection
         classids: Class IDs for each detection
         idxs: Valid detection indices after NMS
+        metrics: Optional metrics object to record warning statistics
 
     Returns:
         frame: The frame with warning messages added
     """
+    # Dictionary to store warning metrics
+    warning_metrics = {
+        'count': 0,
+        'types': {},
+        'severities': {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+    }
+
     # Check if we have valid detections
     if idxs is not None and len(idxs) > 0:
         # Dictionary to store detection information for each object type
@@ -181,6 +189,15 @@ def display_object_warnings(frame, boxes, confidences, classids, idxs):
                 warning_color = (0, 255, 255)  # Yellow (BGR)
                 warning_prefix = "NOTICE: "
 
+            # Update warning metrics
+            warning_metrics['count'] += 1
+            warning_metrics['severities'][severity] += 1
+
+            if object_name in warning_metrics['types']:
+                warning_metrics['types'][object_name] += 1
+            else:
+                warning_metrics['types'][object_name] = 1
+
             # Create warning message
             warning_message = f"{warning_prefix}{object_name.upper()} DETECTED"
 
@@ -216,16 +233,20 @@ def display_object_warnings(frame, boxes, confidences, classids, idxs):
 
             # Draw background rectangle
             cv.rectangle(frame,
-                         (text_x - 10, warning_y_position - text_size[1] - 5),
-                         (text_x + text_size[0] + 10, warning_y_position + 5),
-                         (0, 0, 0),
-                         -1)  # Filled rectangle
+                        (text_x - 10, warning_y_position - text_size[1] - 5),
+                        (text_x + text_size[0] + 10, warning_y_position + 5),
+                        (0, 0, 0),
+                        -1)  # Filled rectangle
 
             # Draw text
             cv.putText(frame, warning_message, (text_x, warning_y_position), font,
-                       font_scale, warning_color, thickness)
+                      font_scale, warning_color, thickness)
 
             # Move position for next warning
             warning_y_position -= warning_spacing
+
+    # Record warning metrics if metrics object is provided
+    if metrics:
+        metrics.record_warning_metrics(warning_metrics)
 
     return frame
