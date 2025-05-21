@@ -98,3 +98,134 @@ def infer_image(net, layer_names, height, width, img, colors, labels,
     img = draw_labels_and_boxes(img, boxes, confidences, classids, idxs, colors, labels)
 
     return img, boxes, confidences, classids, idxs
+
+def display_object_warnings(frame, boxes, confidences, classids, idxs):
+    """
+    Displays warning messages for various detected objects with severity based on
+    estimated proximity to the ego vehicle.
+
+    Args:
+        frame: The input frame where warnings will be displayed
+        boxes: Detected bounding boxes
+        confidences: Confidence scores for each detection
+        classids: Class IDs for each detection
+        idxs: Valid detection indices after NMS
+
+    Returns:
+        frame: The frame with warning messages added
+    """
+    # Check if we have valid detections
+    if idxs is not None and len(idxs) > 0:
+        # Dictionary to store detection information for each object type
+        # Key: class_id, Value: (box, confidence, name)
+        object_detections = {}
+
+        # Objects of interest with their class IDs from COCO dataset
+        objects_of_interest = {
+            0: "person",       # Person
+            1: "bicycle",      # Bicycle
+            2: "car",          # Car
+            3: "motorcycle",   # Motorcycle
+            5: "bus",          # Bus
+            6: "train",        # Train
+            7: "truck",        # Truck
+            9: "traffic light",# Traffic light
+            10: "fire hydrant",# Fire hydrant
+            11: "stop sign",   # Stop sign
+            12: "parking meter",# Parking meter
+            13: "bench"        # Bench
+        }
+
+        # Frame dimensions
+        height, width = frame.shape[:2]
+        frame_area = width * height
+
+        # Check for each object of interest in our detections
+        for i in idxs.flatten():
+            class_id = classids[i]
+
+            # Skip if not in our objects of interest
+            if class_id not in objects_of_interest:
+                continue
+
+            # Get object information
+            box = boxes[i]
+            confidence = confidences[i]
+            object_name = objects_of_interest[class_id]
+
+            # Store the detection with highest confidence if multiple of same class
+            if class_id not in object_detections or confidence > object_detections[class_id][1]:
+                object_detections[class_id] = (box, confidence, object_name)
+
+        # Process and display warnings for detected objects
+        warning_y_position = height - 50  # Starting position for warnings
+        warning_spacing = 40  # Spacing between warnings
+
+        # Draw warnings for each detected object type
+        for class_id, (box, confidence, object_name) in object_detections.items():
+            # Calculate relative size as a distance heuristic
+            box_area = box[2] * box[3]  # width * height
+            relative_size = box_area / frame_area
+
+            # Determine warning level based on relative size
+            if relative_size > 0.15:
+                severity = "HIGH"
+                warning_color = (0, 0, 255)  # Red (BGR)
+                warning_prefix = "IMMEDIATE ACTION: "
+            elif relative_size > 0.05:
+                severity = "MEDIUM"
+                warning_color = (0, 165, 255)  # Orange (BGR)
+                warning_prefix = "CAUTION: "
+            else:
+                severity = "LOW"
+                warning_color = (0, 255, 255)  # Yellow (BGR)
+                warning_prefix = "NOTICE: "
+
+            # Create warning message
+            warning_message = f"{warning_prefix}{object_name.upper()} DETECTED"
+
+            # Special handling for specific objects
+            if class_id == 11:  # Stop sign
+                if severity == "HIGH":
+                    warning_message = "STOP IMMEDIATELY!"
+                elif severity == "MEDIUM":
+                    warning_message = "PREPARE TO STOP"
+                else:
+                    warning_message = "Approaching Stop Sign"
+            elif class_id == 9:  # Traffic light
+                warning_message = f"{warning_prefix}TRAFFIC LIGHT"
+            elif class_id == 2 or class_id == 7:  # Car or truck
+                if severity == "HIGH":
+                    warning_message = f"DANGER: {object_name.upper()} VERY CLOSE"
+                else:
+                    warning_message = f"{warning_prefix}{object_name.upper()} AHEAD"
+            elif class_id == 0:  # Person
+                if severity == "HIGH":
+                    warning_message = "PEDESTRIAN - IMMEDIATE STOP!"
+                else:
+                    warning_message = f"{warning_prefix}PEDESTRIAN DETECTED"
+
+            # Draw warning text with background for better visibility
+            font = cv.FONT_HERSHEY_SIMPLEX
+            font_scale = 0.7
+            thickness = 2
+
+            # Calculate text size
+            text_size = cv.getTextSize(warning_message, font, font_scale, thickness)[0]
+            text_x = (width - text_size[0]) // 2
+
+            # Draw background rectangle
+            cv.rectangle(frame,
+                         (text_x - 10, warning_y_position - text_size[1] - 5),
+                         (text_x + text_size[0] + 10, warning_y_position + 5),
+                         (0, 0, 0),
+                         -1)  # Filled rectangle
+
+            # Draw text
+            cv.putText(frame, warning_message, (text_x, warning_y_position), font,
+                       font_scale, warning_color, thickness)
+
+            # Move position for next warning
+            warning_y_position -= warning_spacing
+
+    return frame

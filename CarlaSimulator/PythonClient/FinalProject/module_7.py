@@ -49,7 +49,7 @@ from PIL import Image
 '''TEST CAMERA'''
 from carla.util import print_over_same_line
 
-from yolo_utils import infer_image, show_image
+from yolo_utils import infer_image, show_image, display_object_warnings
 
 
 ## darknet imports
@@ -1082,17 +1082,20 @@ def exec_waypoint_nav_demo(args):
             #width = on_car_camera.width
 
             if count_obg_detection == 0:
-                frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names, \
-		    						sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels)
+                frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names,
+                                            sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels)
                 count_obg_detection += 1
             else:
-                frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names, \
-		    						sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels, boxes, confidences, classids, idxs, infer=False)
+                frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names,
+                                            sensor_data['CAMERA'].height, sensor_data['CAMERA'].width, frame_obj_to_detect, colors, labels, boxes, confidences, classids, idxs, infer=False)
                 count_obg_detection = (count_obg_detection + 1) % 6
+            # Add this line to check for stop signs and display warning
+            frame_obj_to_detect = display_object_warnings(frame_obj_to_detect, boxes, confidences, classids, idxs)
 
-            #https://stackoverflow.com/questions/50963283/opencv-imshow-doesnt-need-convert-from-bgr-to-rgb
+            # Convert from RGB to BGR for OpenCV display
             frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
 
+            # Show the frame with detections and warnings
             cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
             #print("\nidexs:",idxs)
             #print("\nconfidences:",confidences)
