@@ -68,24 +68,24 @@ def infer_image(net, layer_names, height, width, img, colors, labels,
     confidence = 0.5
     threshold = 0.3
     if infer:
+        # Medir todo o processo de detecção
+        start_time = time.time()
         # Contructing a blob from the input image
         blob = cv.dnn.blobFromImage(img, 1 / 255.0, (416, 416),
                         swapRB=True, crop=False)
 
         # Perform a forward pass of the YOLO object detector
         net.setInput(blob)
-
-        # Getting the outputs from the output layers
-        start_time = time.time()
         outs = net.forward(layer_names)
-        detection_time = time.time() - start_time
-        print(f"[INFO] YOLOv3 took {detection_time:.6f} seconds")
 
         # Generate the boxes, confidences, and classIDs
         boxes, confidences, classids = generate_boxes_confidences_classids(outs, height, width, confidence)
 
-        # Apply Non-Maxima Suppression to suppress overlapping bounding boxes
+        # Apply Non-Maxima Suppression
         idxs = cv.dnn.NMSBoxes(boxes, confidences, confidence, threshold)
+
+        detection_time = time.time() - start_time
+        print(f"[INFO] YOLOv3 complete pipeline took {detection_time:.6f} seconds")
 
         # Record metrics if a metrics object is provided
         if metrics:
