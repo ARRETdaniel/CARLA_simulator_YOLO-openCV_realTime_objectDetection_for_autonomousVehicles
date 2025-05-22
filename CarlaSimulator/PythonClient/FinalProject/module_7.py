@@ -1152,7 +1152,7 @@ def exec_waypoint_nav_demo(args):
 
             '''
             '''
-            filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'on_car_camera', frame)
+            filename = args.out_filename_format.format(TOTAL_EPISODE_FRAMES, 'frame_camera', frame)
             frame_camera.save_to_disk(filename)
 
             output_path = "_out/on_car_camera_depth"
