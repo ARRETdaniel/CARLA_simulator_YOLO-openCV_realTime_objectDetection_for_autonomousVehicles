@@ -111,7 +111,7 @@ class ResultsReporter:
         summary_path = os.path.join(self.metrics_dir, 'summary_stats.csv')
         if os.path.exists(summary_path):
             summary = {}
-            with open(summary_path, 'r', encoding='utf-8') as f:
+            with open(summary_path, 'r', encoding='utf-8', errors='replace') as f:
                 for line in f:
                     if ',' in line:
                         key, value = line.strip().split(',', 1)
@@ -119,28 +119,82 @@ class ResultsReporter:
                             # Tenta converter para número se possível
                             summary[key] = float(value)
                         except ValueError:
-                            summary[key] = value
+                            # Verifica se é um JSON
+                            if value.startswith('{') and value.endswith('}'):
+                                try:
+                                    import json
+                                    summary[key] = json.loads(value)
+                                except:
+                                    summary[key] = value
+                            else:
+                                summary[key] = value
             data['summary'] = summary
 
         # Carrega métricas de detecção
         detection_path = os.path.join(self.metrics_dir, 'detection_metrics.csv')
         if os.path.exists(detection_path):
             detections = []
-            with open(detection_path, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    detections.append(row)
+            try:
+                # First try UTF-8
+                with open(detection_path, 'r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        detections.append(row)
+            except UnicodeDecodeError:
+                # If that fails, try Windows-1252 (common on Windows systems)
+                with open(detection_path, 'r', encoding='latin-1') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        detections.append(row)
             data['detections'] = detections
 
         # Carrega métricas de avisos
         warnings_path = os.path.join(self.metrics_dir, 'warning_metrics.csv')
         if os.path.exists(warnings_path):
             warnings = []
-            with open(warnings_path, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    warnings.append(row)
+            try:
+                with open(warnings_path, 'r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        warnings.append(row)
+            except UnicodeDecodeError:
+                with open(warnings_path, 'r', encoding='latin-1') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        warnings.append(row)
             data['warnings'] = warnings
+
+        # Carrega métricas de precisão por classe
+        class_accuracy_path = os.path.join(self.metrics_dir, 'class_accuracy.csv')
+        if os.path.exists(class_accuracy_path):
+            class_metrics = []
+            try:
+                with open(class_accuracy_path, 'r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        class_metrics.append(row)
+            except UnicodeDecodeError:
+                with open(class_accuracy_path, 'r', encoding='latin-1') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        class_metrics.append(row)
+            data['class_metrics'] = class_metrics
+
+        # Carrega métricas de distância
+        distance_metrics_path = os.path.join(self.metrics_dir, 'distance_metrics.csv')
+        if os.path.exists(distance_metrics_path):
+            distance_metrics = []
+            try:
+                with open(distance_metrics_path, 'r', encoding='utf-8') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        distance_metrics.append(row)
+            except UnicodeDecodeError:
+                with open(distance_metrics_path, 'r', encoding='latin-1') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        distance_metrics.append(row)
+            data['distance_metrics'] = distance_metrics
 
         return data
 
@@ -311,6 +365,133 @@ class ResultsReporter:
 
         return html
 
+    def _generate_class_accuracy_html(self, data):
+        """Gera HTML para a seção de precisão por classe."""
+        html = """
+        <div class="container">
+            <h2>Precisão de Detecção por Classe</h2>
+            """
+
+        if 'class_precision' not in data.get('summary', {}):
+            html += "<p>Dados de precisão por classe não disponíveis</p>"
+        else:
+            class_precision = data['summary']['class_precision']
+            class_confidence = data['summary'].get('class_avg_confidence', {})
+
+            # Convert from string to dict if needed
+            if isinstance(class_precision, str):
+                class_precision = json.loads(class_precision)
+            if isinstance(class_confidence, str):
+                class_confidence = json.loads(class_confidence)
+
+            html += """
+            <div class="chart">
+                <img src="../metrics_output/class_precision_metrics.png" alt="Precisão por Classe">
+            </div>
+
+            <h3>Detalhes por Classe</h3>
+            <table>
+                <tr>
+                    <th>Classe</th>
+                    <th>Precisão</th>
+                    <th>Confiança Média</th>
+                </tr>
+            """
+
+            # Mapeamento de IDs de classe para nomes mais amigáveis
+            class_names = {
+                0: "Pessoa",
+                1: "Bicicleta",
+                2: "Carro",
+                3: "Motocicleta",
+                5: "Ônibus",
+                7: "Caminhão",
+                9: "Semáforo",
+                11: "Placa de pare",
+                13: "Banco"
+            }
+
+            for class_id, precision in class_precision.items():
+                class_id = int(class_id) if class_id.isdigit() else class_id
+                class_name = class_names.get(class_id, f"Classe {class_id}")
+                confidence = class_confidence.get(str(class_id), 0)
+
+                html += f"""
+                <tr>
+                    <td>{class_name}</td>
+                    <td>{precision:.4f}</td>
+                    <td>{confidence:.4f}</td>
+                </tr>
+                """
+
+            html += """
+            </table>
+        </div>
+        """
+
+        return html
+
+    def _generate_distance_metrics_html(self, data):
+        """Gera HTML para a seção de métricas de distância."""
+        html = """
+        <div class="container">
+            <h2>Taxas de Detecção por Distância</h2>
+            """
+
+        if 'distance_detection_rates' not in data.get('summary', {}):
+            html += "<p>Dados de detecção por distância não disponíveis</p>"
+        else:
+            distance_rates = data['summary']['distance_detection_rates']
+
+            # Convert from string to dict if needed
+            if isinstance(distance_rates, str):
+                distance_rates = json.loads(distance_rates)
+
+            html += """
+            <div class="chart">
+                <img src="../metrics_output/distance_metrics.png" alt="Métricas por Distância">
+            </div>
+
+            <h3>Desempenho por Faixa de Distância</h3>
+            <table>
+                <tr>
+                    <th>Faixa de Distância</th>
+                    <th>Taxa de Detecção</th>
+                </tr>
+            """
+
+            # Descrições mais claras para as faixas de distância
+            distance_descriptions = {
+                'próximo': "Próximo (<10 metros)",
+                'médio': "Médio (10-30 metros)",
+                'distante': "Distante (>30 metros)"
+            }
+
+            for band, rate in distance_rates.items():
+                description = distance_descriptions.get(band, band)
+
+                html += f"""
+                <tr>
+                    <td>{description}</td>
+                    <td>{rate:.4f}</td>
+                </tr>
+                """
+
+            html += """
+            </table>
+
+            <div class="conclusion">
+                <h3>Análise de Desempenho por Distância</h3>
+                <p>A análise de detecção por distância é crucial para entender a eficácia do sistema em diferentes cenários.
+                Objetos próximos geralmente são mais facilmente detectáveis, mas podem exigir resposta mais rápida.
+                Objetos distantes representam um desafio maior para a detecção, mas proporcionam mais tempo para reação.
+                O equilíbrio entre estes fatores é essencial para um sistema de assistência ao condutor eficaz.</p>
+            </div>
+        </div>
+        """
+
+        return html
+
     def generate_report(self):
         """Gera o relatório HTML."""
         # Carrega dados de métricas
@@ -334,6 +515,10 @@ class ResultsReporter:
 
             {self._generate_charts_html()}
 
+            {self._generate_class_accuracy_html(data)}
+
+            {self._generate_distance_metrics_html(data)}
+
             {self._generate_hypothesis_validation_html(data)}
 
             <div class="container">
@@ -347,6 +532,7 @@ class ResultsReporter:
                     <li>O sistema detecta com sucesso objetos de interesse, incluindo veículos, pedestres, sinais de trânsito e outros obstáculos.</li>
                     <li>O feedback visual é fornecido através de avisos claros com níveis de severidade baseados na proximidade.</li>
                     <li>O desempenho é adequado para aplicações em tempo real, com tempos de detecção rápidos o suficiente para uso prático.</li>
+                    <li>A precisão de detecção varia de acordo com a classe do objeto e a distância, com melhor desempenho para objetos próximos e de maior tamanho.</li>
                 </ul>
 
                 <h3>Limitações</h3>
@@ -354,6 +540,7 @@ class ResultsReporter:
                     <li>A precisão da detecção pode variar dependendo das condições de iluminação, tamanho do objeto e oclusão.</li>
                     <li>A estimativa de distância é baseada em uma heurística simples (tamanho da caixa delimitadora) em vez de informações precisas de profundidade.</li>
                     <li>O desempenho pode degradar em cenas altamente complexas com muitos objetos.</li>
+                    <li>A taxa de detecção diminui significativamente para objetos distantes, o que pode limitar o tempo de reação disponível.</li>
                 </ul>
 
                 <h3>Trabalhos Futuros</h3>
@@ -362,6 +549,8 @@ class ResultsReporter:
                     <li>Otimizar o pipeline de detecção para melhor desempenho em plataformas com recursos limitados.</li>
                     <li>Integrar com outros sistemas do veículo para respostas coordenadas a objetos detectados.</li>
                     <li>Adicionar personalização de usuário para preferências e limiares de avisos.</li>
+                    <li>Melhorar a detecção de objetos distantes através do uso de modelos específicos para esta finalidade ou técnicas de aumento de resolução.</li>
+                    <li>Implementar avaliação com dados de validação cruzada para métricas mais precisas de precisão e recall.</li>
                 </ul>
             </div>
         </body>

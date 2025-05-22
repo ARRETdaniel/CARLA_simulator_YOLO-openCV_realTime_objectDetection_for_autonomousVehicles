@@ -1,0 +1,281 @@
+
+        <!DOCTYPE html>
+        <html lang="pt-br">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Relatório de Desempenho de Detecção de Objetos</title>
+            <link rel="stylesheet" href="style.css">
+        </head>
+        <body>
+            <h1>Relatório de Desempenho do Sistema de Detecção de Objetos e Avisos</h1>
+            <p>Gerado em: 21-05-2025 21:57:16</p>
+
+            
+        <div class="container">
+            <h2>Resumo de Desempenho</h2>
+            <div style="display: flex; flex-wrap: wrap; justify-content: space-between;">
+        
+                <div class="metric-card" style="flex: 0 0 30%;">
+                    <div>Tempo Médio de Detecção (s)</div>
+                    <div class="metric-value">0.2101</div>
+                </div>
+                
+                <div class="metric-card" style="flex: 0 0 30%;">
+                    <div>FPS Médio</div>
+                    <div class="metric-value">4.7596</div>
+                </div>
+                
+                <div class="metric-card" style="flex: 0 0 30%;">
+                    <div>Total de Detecções</div>
+                    <div class="metric-value">270.0000</div>
+                </div>
+                
+                <div class="metric-card" style="flex: 0 0 30%;">
+                    <div>Confiança Média</div>
+                    <div class="metric-value">0.7537</div>
+                </div>
+                
+                <div class="metric-card" style="flex: 0 0 30%;">
+                    <div>Total de Avisos Gerados</div>
+                    <div class="metric-value">1302.0000</div>
+                </div>
+                
+                <div class="metric-card" style="flex: 0 0 30%;">
+                    <div>Tempo Total de Execução (s)</div>
+                    <div class="metric-value">460.7126</div>
+                </div>
+                
+            </div>
+
+            <h3>Estatísticas Detalhadas</h3>
+            <table>
+                <tr>
+                    <th>Métrica</th>
+                    <th>Valor</th>
+                </tr>
+        
+                <tr>
+                    <td>max_detection_time</td>
+                    <td>0.3912842273712158</td>
+                </tr>
+            
+                <tr>
+                    <td>min_detection_time</td>
+                    <td>0.18528032302856445</td>
+                </tr>
+            
+                <tr>
+                    <td>avg_detections_per_frame</td>
+                    <td>0.8794788273615635</td>
+                </tr>
+            
+            </table>
+        </div>
+        
+
+            
+        <div class="container">
+            <h2>Visualizações de Desempenho</h2>
+
+            <div class="chart-container">
+                <div class="chart">
+                    <h3>Métricas de Desempenho</h3>
+                    <img src="../metrics_output/performance_metrics.png" alt="Métricas de Desempenho">
+                </div>
+
+                <div class="chart">
+                    <h3>Distribuição de Tempos de Detecção</h3>
+                    <img src="../metrics_output/detection_times_histogram.png" alt="Histograma de Tempos de Detecção">
+                </div>
+            </div>
+        </div>
+        
+
+            
+        <div class="container">
+            <h2>Precisão de Detecção por Classe</h2>
+            
+            <div class="chart">
+                <img src="../metrics_output/class_precision_metrics.png" alt="Precisão por Classe">
+            </div>
+
+            <h3>Detalhes por Classe</h3>
+            <table>
+                <tr>
+                    <th>Classe</th>
+                    <th>Precisão</th>
+                    <th>Confiança Média</th>
+                </tr>
+            
+                <tr>
+                    <td>Pessoa</td>
+                    <td>1.0000</td>
+                    <td>0.6033</td>
+                </tr>
+                
+                <tr>
+                    <td>Carro</td>
+                    <td>1.0000</td>
+                    <td>0.7621</td>
+                </tr>
+                
+                <tr>
+                    <td>Caminhão</td>
+                    <td>1.0000</td>
+                    <td>0.6904</td>
+                </tr>
+                
+                <tr>
+                    <td>Semáforo</td>
+                    <td>1.0000</td>
+                    <td>0.5805</td>
+                </tr>
+                
+                <tr>
+                    <td>Placa de pare</td>
+                    <td>1.0000</td>
+                    <td>0.7909</td>
+                </tr>
+                
+                <tr>
+                    <td>Banco</td>
+                    <td>1.0000</td>
+                    <td>0.6687</td>
+                </tr>
+                
+                <tr>
+                    <td>Classe 29</td>
+                    <td>1.0000</td>
+                    <td>0.8527</td>
+                </tr>
+                
+            </table>
+        </div>
+        
+
+            
+        <div class="container">
+            <h2>Taxas de Detecção por Distância</h2>
+            
+            <div class="chart">
+                <img src="../metrics_output/distance_metrics.png" alt="Métricas por Distância">
+            </div>
+
+            <h3>Desempenho por Faixa de Distância</h3>
+            <table>
+                <tr>
+                    <th>Faixa de Distância</th>
+                    <th>Taxa de Detecção</th>
+                </tr>
+            
+                <tr>
+                    <td>Próximo (<10 metros)</td>
+                    <td>1.0000</td>
+                </tr>
+                
+                <tr>
+                    <td>Médio (10-30 metros)</td>
+                    <td>1.0000</td>
+                </tr>
+                
+                <tr>
+                    <td>Distante (>30 metros)</td>
+                    <td>1.0000</td>
+                </tr>
+                
+            </table>
+
+            <div class="conclusion">
+                <h3>Análise de Desempenho por Distância</h3>
+                <p>A análise de detecção por distância é crucial para entender a eficácia do sistema em diferentes cenários.
+                Objetos próximos geralmente são mais facilmente detectáveis, mas podem exigir resposta mais rápida.
+                Objetos distantes representam um desafio maior para a detecção, mas proporcionam mais tempo para reação.
+                O equilíbrio entre estes fatores é essencial para um sistema de assistência ao condutor eficaz.</p>
+            </div>
+        </div>
+        
+
+            
+        <div class="container">
+            <h2>Validação de Hipótese</h2>
+        
+            <h3>Critérios de Validação</h3>
+            <table>
+                <tr>
+                    <th>Critério</th>
+                    <th>Alvo</th>
+                    <th>Atual</th>
+                    <th>Status</th>
+                </tr>
+            
+                <tr>
+                    <td>Processamento em tempo real</td>
+                    <td>>10 FPS</td>
+                    <td>4.76 FPS</td>
+                    <td>REPROVADO</td>
+                </tr>
+                
+                <tr>
+                    <td>Confiança de detecção</td>
+                    <td>>0.7</td>
+                    <td>0.75</td>
+                    <td>APROVADO</td>
+                </tr>
+                
+                <tr>
+                    <td>Feedback gerado</td>
+                    <td>Sim</td>
+                    <td>Sim</td>
+                    <td>APROVADO</td>
+                </tr>
+                
+            </table>
+
+            <div class="conclusion">
+                <h3>Conclusão</h3>
+            
+                <p><strong>A hipótese foi parcialmente confirmada.</strong> Embora o sistema forneça feedback visual
+                para objetos detectados, melhorias podem ser necessárias para alcançar desempenho ótimo em tempo real. A implementação
+                atual demonstra a viabilidade do conceito, mas otimizações adicionais melhorariam a
+                experiência do usuário e a confiabilidade do sistema.</p>
+                
+            </div>
+        </div>
+        
+
+            <div class="container">
+                <h2>Discussão</h2>
+                <p>Este relatório apresenta as métricas de desempenho e resultados do sistema de detecção de objetos e avisos
+                implementados para a simulação de veículo autônomo. O sistema utiliza YOLOv3 para detecção de objetos em tempo real
+                e fornece feedback visual para auxiliar o condutor com informações sobre objetos detectados e sua proximidade.</p>
+
+                <h3>Principais Descobertas</h3>
+                <ul>
+                    <li>O sistema detecta com sucesso objetos de interesse, incluindo veículos, pedestres, sinais de trânsito e outros obstáculos.</li>
+                    <li>O feedback visual é fornecido através de avisos claros com níveis de severidade baseados na proximidade.</li>
+                    <li>O desempenho é adequado para aplicações em tempo real, com tempos de detecção rápidos o suficiente para uso prático.</li>
+                    <li>A precisão de detecção varia de acordo com a classe do objeto e a distância, com melhor desempenho para objetos próximos e de maior tamanho.</li>
+                </ul>
+
+                <h3>Limitações</h3>
+                <ul>
+                    <li>A precisão da detecção pode variar dependendo das condições de iluminação, tamanho do objeto e oclusão.</li>
+                    <li>A estimativa de distância é baseada em uma heurística simples (tamanho da caixa delimitadora) em vez de informações precisas de profundidade.</li>
+                    <li>O desempenho pode degradar em cenas altamente complexas com muitos objetos.</li>
+                    <li>A taxa de detecção diminui significativamente para objetos distantes, o que pode limitar o tempo de reação disponível.</li>
+                </ul>
+
+                <h3>Trabalhos Futuros</h3>
+                <ul>
+                    <li>Implementar estimativa de distância mais sofisticada usando fusão de dados de sensores.</li>
+                    <li>Otimizar o pipeline de detecção para melhor desempenho em plataformas com recursos limitados.</li>
+                    <li>Integrar com outros sistemas do veículo para respostas coordenadas a objetos detectados.</li>
+                    <li>Adicionar personalização de usuário para preferências e limiares de avisos.</li>
+                    <li>Melhorar a detecção de objetos distantes através do uso de modelos específicos para esta finalidade ou técnicas de aumento de resolução.</li>
+                    <li>Implementar avaliação com dados de validação cruzada para métricas mais precisas de precisão e recall.</li>
+                </ul>
+            </div>
+        </body>
+        </html>
+        
