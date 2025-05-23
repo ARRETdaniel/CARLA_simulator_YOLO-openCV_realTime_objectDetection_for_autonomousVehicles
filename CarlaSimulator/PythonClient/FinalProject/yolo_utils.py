@@ -4,7 +4,58 @@ import cv2 as cv
 import subprocess
 import time
 import os
+import threading
 from performance_metrics import PerformanceMetrics
+
+# Global dictionary to track warning persistence
+warning_timers = {
+    'person': 0,
+    'car': 0,
+    'truck': 0,
+    'bus': 0,
+    'stop sign': 0,
+    'traffic light': 0,
+    'bicycle': 0,
+    'motorcycle': 0
+}
+
+# Persistence duration in frames for each warning type
+WARNING_PERSISTENCE = {
+    'person': 15,       # Critical - keep warnings for 15 frames
+    'stop sign': 15,    # Critical - keep warnings for 15 frames
+    'traffic light': 10,# Important - keep warnings for 10 frames
+    'default': 8        # Standard - keep warnings for 8 frames
+}
+
+# Dictionary to track last audio warning time to prevent rapid repeats
+last_audio_warning = {
+    'person': 0,
+    'stop sign': 0
+}
+
+# Audio feedback function using a separate thread to avoid blocking
+def play_audio_warning(warning_type):
+    """Play audio warning without blocking the main detection thread"""
+    current_time = time.time()
+
+    # Only play audio warning if it's been at least 3 seconds since the last one of this type
+    if current_time - last_audio_warning.get(warning_type, 0) < 3.0:
+        return
+
+    # Update the last warning time
+    last_audio_warning[warning_type] = current_time
+
+    # Different sounds for different warning types
+    if warning_type == 'person':
+        sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Exclamation.wav').PlaySync();"
+    elif warning_type == 'stop sign':
+        sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Critical Stop.wav').PlaySync();"
+    else:
+        # Default sound for other warnings
+        sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Notify.wav').PlaySync();"
+
+    # Run the command in a separate thread to avoid blocking
+    threading.Thread(target=lambda: subprocess.run(sound_command, shell=True)).start()
 
 def show_image(img):
     cv.imshow("Image", img)
@@ -13,6 +64,25 @@ def show_image(img):
 def draw_labels_and_boxes(img, boxes, confidences, classids, idxs, colors, labels):
     # If there are any detections
     if len(idxs) > 0:
+        # Priority classes that should trigger warnings
+        priority_classes = {
+            'person': 'CAUTION: PEDESTRIAN DETECTED',
+            'car': 'VEHICLE AHEAD',
+            'truck': 'LARGE VEHICLE AHEAD',
+            'bus': 'BUS AHEAD',
+            'stop sign': 'APPROACHING STOP SIGN',
+            'traffic light': 'TRAFFIC LIGHT AHEAD',
+            'bicycle': 'CYCLIST NEARBY',
+            'motorcycle': 'MOTORCYCLE NEARBY'
+        }
+
+        # Track important detections
+        critical_warnings = []
+        standard_warnings = []
+
+        # Track which classes were detected in this frame
+        detected_classes = set()
+
         for i in idxs.flatten():
             # Get the bounding box coordinates
             x, y = boxes[i][0], boxes[i][1]
@@ -23,8 +93,120 @@ def draw_labels_and_boxes(img, boxes, confidences, classids, idxs, colors, label
 
             # Draw the bounding box rectangle and label on the image
             cv.rectangle(img, (x, y), (x+w, y+h), color, 2)
-            text = "{}: {:4f}".format(labels[classids[i]], confidences[i])
+            text = "{}: {:.2f}".format(labels[classids[i]], confidences[i])
             cv.putText(img, text, (x, y-5), cv.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
+            # Check if this is a class we want to warn about
+            class_name = labels[classids[i]]
+            if class_name in priority_classes:
+                detected_classes.add(class_name)
+                warning_msg = priority_classes[class_name]
+                box_area = w * h  # Use as proxy for distance/importance
+                conf_percent = int(confidences[i] * 100)
+
+                # Separate critical warnings from standard ones
+                if class_name in ['person', 'stop sign']:
+                    critical_warnings.append((warning_msg, conf_percent, box_area, class_name))
+                    # Trigger audio warning for critical detections
+                    play_audio_warning(class_name)
+                else:
+                    standard_warnings.append((warning_msg, conf_percent, box_area, class_name))
+
+        # Update warning timers: reset timer for detected classes
+        for class_name in detected_classes:
+            persistence = WARNING_PERSISTENCE.get(class_name, WARNING_PERSISTENCE['default'])
+            warning_timers[class_name] = persistence
+
+        # Decrease timers for non-detected classes and include warnings for classes with active timers
+        for class_name, timer in list(warning_timers.items()):
+            if class_name not in detected_classes and timer > 0:
+                # This class wasn't detected in current frame but timer is still active
+                warning_timers[class_name] = timer - 1
+
+                # Add a persisted warning with reducing confidence
+                fading_conf = max(40, int(70 * (timer / WARNING_PERSISTENCE.get(class_name, WARNING_PERSISTENCE['default']))))
+                warning_msg = priority_classes.get(class_name, "Warning")
+
+                # Use a smaller size factor for persistent warnings to indicate they're older
+                size_factor = 0.75  # Smaller than direct detections
+
+                if class_name in ['person', 'stop sign']:
+                    critical_warnings.append((f"{warning_msg} (Persisted)", fading_conf, size_factor, class_name))
+                else:
+                    standard_warnings.append((f"{warning_msg} (Persisted)", fading_conf, size_factor, class_name))
+
+        # Display warnings if we have any
+        if critical_warnings or standard_warnings:
+            # Sort by box size (larger = closer/more important)
+            critical_warnings.sort(key=lambda x: x[2], reverse=True)
+            standard_warnings.sort(key=lambda x: x[2], reverse=True)
+
+            # Combine warnings, prioritizing critical ones
+            all_warnings = critical_warnings[:2] + standard_warnings[:1]
+
+            if all_warnings:
+                # Get image dimensions
+                height, width = img.shape[:2]
+
+                # Create a more visually appealing background for warnings (gradient)
+                overlay = img.copy()
+                warning_height = min(len(all_warnings), 3) * 45 + 15
+
+                # Create a gradient overlay (dark at bottom, lighter toward top)
+                for i in range(warning_height):
+                    alpha = min(0.8, 0.4 + (i / warning_height) * 0.4)  # Gradient transparency
+                    cv.rectangle(overlay,
+                               (0, height - i),
+                               (width, height),
+                               (0, 0, 0),
+                               -1)
+                    cv.addWeighted(overlay, alpha, img, 1 - alpha, 0, img)
+
+                # Display warnings
+                y_offset = height - warning_height + 40
+                for warning, conf, _, class_name in all_warnings[:3]:
+                    # Choose warning icon based on type
+                    if "PEDESTRIAN" in warning:
+                        icon = "🚶‍"
+                        text_color = (0, 0, 255)  # Red for pedestrians
+                        warning_with_icon = f"{icon} {warning}"
+                    elif "STOP SIGN" in warning:
+                        icon = "🛑"
+                        text_color = (0, 0, 255)  # Red for stop signs
+                        warning_with_icon = f"{icon} {warning}"
+                    elif "VEHICLE" in warning or "TRUCK" in warning or "BUS" in warning:
+                        icon = "🚗"
+                        text_color = (255, 255, 0)  # Yellow for vehicles
+                        warning_with_icon = f"{icon} {warning}"
+                    elif "CYCLIST" in warning or "MOTORCYCLE" in warning:
+                        icon = "🚲"
+                        text_color = (255, 255, 0)  # Yellow for cyclists/motorcycles
+                        warning_with_icon = f"{icon} {warning}"
+                    elif "TRAFFIC LIGHT" in warning:
+                        icon = "🚦"
+                        text_color = (0, 255, 255)  # Light blue for traffic lights
+                        warning_with_icon = f"{icon} {warning}"
+                    else:
+                        icon = "⚠️"
+                        text_color = (255, 255, 255)  # White for others
+                        warning_with_icon = f"{icon} {warning}"
+
+                    # Add shadow effect for better visibility
+                    cv.putText(img, f"{warning_with_icon} ({conf}%)",
+                             (22, y_offset+2), cv.FONT_HERSHEY_SIMPLEX,
+                             0.75, (0, 0, 0), 4)  # Shadow
+
+                    # Draw the actual warning text
+                    cv.putText(img, f"{warning_with_icon} ({conf}%)",
+                             (20, y_offset), cv.FONT_HERSHEY_SIMPLEX,
+                             0.75, text_color, 2)
+
+                    # Add a small separation line between warnings
+                    if y_offset + 45 < height:
+                        cv.line(img, (30, y_offset + 15), (width - 30, y_offset + 15),
+                              (200, 200, 200), 1)
+
+                    y_offset += 45
 
     return img
 
@@ -62,7 +244,6 @@ def generate_boxes_confidences_classids(outs, height, width, tconf):
 
     return boxes, confidences, classids
 
-#ef infer_image(net, layer_names, height, width, img, colors, labels, FLAGS,
 def infer_image(net, layer_names, height, width, img, colors, labels,
             boxes=None, confidences=None, classids=None, idxs=None, infer=True, metrics=None):
     confidence = 0.5
@@ -98,155 +279,3 @@ def infer_image(net, layer_names, height, width, img, colors, labels,
     img = draw_labels_and_boxes(img, boxes, confidences, classids, idxs, colors, labels)
 
     return img, boxes, confidences, classids, idxs
-
-def display_object_warnings(frame, boxes, confidences, classids, idxs, metrics=None):
-    """
-    Displays warning messages for various detected objects with severity based on
-    estimated proximity to the ego vehicle.
-
-    Args:
-        frame: The input frame where warnings will be displayed
-        boxes: Detected bounding boxes
-        confidences: Confidence scores for each detection
-        classids: Class IDs for each detection
-        idxs: Valid detection indices after NMS
-        metrics: Optional metrics object to record warning statistics
-
-    Returns:
-        frame: The frame with warning messages added
-    """
-    # Dictionary to store warning metrics
-    warning_metrics = {
-        'count': 0,
-        'types': {},
-        'severities': {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
-    }
-
-    # Check if we have valid detections
-    if idxs is not None and len(idxs) > 0:
-        # Dictionary to store detection information for each object type
-        # Key: class_id, Value: (box, confidence, name)
-        object_detections = {}
-
-        # Objects of interest with their class IDs from COCO dataset
-        objects_of_interest = {
-            0: "person",       # Person
-            1: "bicycle",      # Bicycle
-            2: "car",          # Car
-            3: "motorcycle",   # Motorcycle
-            5: "bus",          # Bus
-            6: "train",        # Train
-            7: "truck",        # Truck
-            9: "traffic light",# Traffic light
-            10: "fire hydrant",# Fire hydrant
-            11: "stop sign",   # Stop sign
-            12: "parking meter",# Parking meter
-            13: "bench"        # Bench
-        }
-
-        # Frame dimensions
-        height, width = frame.shape[:2]
-        frame_area = width * height
-
-        # Check for each object of interest in our detections
-        for i in idxs.flatten():
-            class_id = classids[i]
-
-            # Skip if not in our objects of interest
-            if class_id not in objects_of_interest:
-                continue
-
-            # Get object information
-            box = boxes[i]
-            confidence = confidences[i]
-            object_name = objects_of_interest[class_id]
-
-            # Store the detection with highest confidence if multiple of same class
-            if class_id not in object_detections or confidence > object_detections[class_id][1]:
-                object_detections[class_id] = (box, confidence, object_name)
-
-        # Process and display warnings for detected objects
-        warning_y_position = height - 50  # Starting position for warnings
-        warning_spacing = 40  # Spacing between warnings
-
-        # Draw warnings for each detected object type
-        for class_id, (box, confidence, object_name) in object_detections.items():
-            # Calculate relative size as a distance heuristic
-            box_area = box[2] * box[3]  # width * height
-            relative_size = box_area / frame_area
-
-            # Determine warning level based on relative size
-            if relative_size > 0.15:
-                severity = "HIGH"
-                warning_color = (0, 0, 255)  # Red (BGR)
-                warning_prefix = "IMMEDIATE ACTION: "
-            elif relative_size > 0.05:
-                severity = "MEDIUM"
-                warning_color = (0, 165, 255)  # Orange (BGR)
-                warning_prefix = "CAUTION: "
-            else:
-                severity = "LOW"
-                warning_color = (0, 255, 255)  # Yellow (BGR)
-                warning_prefix = "NOTICE: "
-
-            # Update warning metrics
-            warning_metrics['count'] += 1
-            warning_metrics['severities'][severity] += 1
-
-            if object_name in warning_metrics['types']:
-                warning_metrics['types'][object_name] += 1
-            else:
-                warning_metrics['types'][object_name] = 1
-
-            # Create warning message
-            warning_message = f"{warning_prefix}{object_name.upper()} DETECTED"
-
-            # Special handling for specific objects
-            if class_id == 11:  # Stop sign
-                if severity == "HIGH":
-                    warning_message = "STOP IMMEDIATELY!"
-                elif severity == "MEDIUM":
-                    warning_message = "PREPARE TO STOP"
-                else:
-                    warning_message = "Approaching Stop Sign"
-            elif class_id == 9:  # Traffic light
-                warning_message = f"{warning_prefix}TRAFFIC LIGHT"
-            elif class_id == 2 or class_id == 7:  # Car or truck
-                if severity == "HIGH":
-                    warning_message = f"DANGER: {object_name.upper()} VERY CLOSE"
-                else:
-                    warning_message = f"{warning_prefix}{object_name.upper()} AHEAD"
-            elif class_id == 0:  # Person
-                if severity == "HIGH":
-                    warning_message = "PEDESTRIAN - IMMEDIATE STOP!"
-                else:
-                    warning_message = f"{warning_prefix}PEDESTRIAN DETECTED"
-
-            # Draw warning text with background for better visibility
-            font = cv.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.7
-            thickness = 2
-
-            # Calculate text size
-            text_size = cv.getTextSize(warning_message, font, font_scale, thickness)[0]
-            text_x = (width - text_size[0]) // 2
-
-            # Draw background rectangle
-            cv.rectangle(frame,
-                        (text_x - 10, warning_y_position - text_size[1] - 5),
-                        (text_x + text_size[0] + 10, warning_y_position + 5),
-                        (0, 0, 0),
-                        -1)  # Filled rectangle
-
-            # Draw text
-            cv.putText(frame, warning_message, (text_x, warning_y_position), font,
-                      font_scale, warning_color, thickness)
-
-            # Move position for next warning
-            warning_y_position -= warning_spacing
-
-    # Record warning metrics if metrics object is provided
-    if metrics:
-        metrics.record_warning_metrics(warning_metrics)
-
-    return frame

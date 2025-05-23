@@ -49,7 +49,7 @@ from PIL import Image
 '''TEST CAMERA'''
 from carla.util import print_over_same_line
 
-from yolo_utils import infer_image, show_image, display_object_warnings
+from yolo_utils import infer_image, show_image
 from performance_metrics import PerformanceMetrics
 from results_reporter import ResultsReporter
 
@@ -1096,8 +1096,8 @@ def exec_waypoint_nav_demo(args):
                                         classids, idxs, infer=False, metrics=metrics)
                 count_obg_detection = (count_obg_detection + 1) % 6
             # Add this line to check for stop signs and display warning
-            frame_obj_to_detect = display_object_warnings(frame_obj_to_detect, boxes, confidences,
-                                                     classids, idxs, metrics=metrics)
+            #frame_obj_to_detect = display_object_warnings(frame_obj_to_detect, boxes, confidences,
+             #                                        classids, idxs, metrics=metrics)
 
             # Convert from RGB to BGR for OpenCV display
             frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)

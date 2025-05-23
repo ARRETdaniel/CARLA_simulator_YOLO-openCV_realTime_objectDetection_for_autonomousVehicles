@@ -5,6 +5,9 @@
 2. identify speed sign & take action (show info on screen or pass data to BehaviouralPlanner):
   - slow car speed on cmd...
 
-YOLO v4 
+3. Mostrar feedback visual output do cv2 (warning, attention - aproching stop sign, vehicle nearby)
+
+
+YOLO v4
 
 town2 seems to be a good city for tests

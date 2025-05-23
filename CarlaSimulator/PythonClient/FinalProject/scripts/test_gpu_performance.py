@@ -49,8 +49,8 @@ def benchmark_yolo_performance(use_gpu=True):
     print("\n=== Benchmark de Performance YOLO ===")
 
     # Carregar modelo
-    model_config = './yolov3-coco/yolov3.cfg'
-    model_weights = './yolov3-coco/yolov3.weights'
+    model_config = '../yolov3-coco/yolov3.cfg'
+    model_weights = '../yolov3-coco/yolov3.weights'
 
     try:
         # Criar uma imagem de teste simples
@@ -111,14 +111,14 @@ def benchmark_yolo_tiny():
     print("\n=== Benchmark YOLOv3-tiny ===")
 
     # Baixar arquivos se necessário
-    model_config = './yolov3-coco/yolov3-tiny.cfg'
-    model_weights = './yolov3-coco/yolov3-tiny.weights'
+    model_config = '../yolov3-coco/yolov3-tiny.cfg'
+    model_weights = '../yolov3-coco/yolov3-tiny.weights'
 
     # Verificar e baixar arquivos
     import os
     import urllib.request
 
-    if not os.path.exists('./yolov3-coco'):
+    if not os.path.exists('../yolov3-coco'):
         os.makedirs('./yolov3-coco')
 
     if not os.path.exists(model_config):

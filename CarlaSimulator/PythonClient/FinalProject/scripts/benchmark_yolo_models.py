@@ -201,7 +201,7 @@ def benchmark_yolo_models(image_path):
         print(f"Objetos detectados: {len(indices) if len(indices) > 0 else 0}")
 
     # Salvar as imagens resultado
-    output_dir = "benchmark_results"
+    output_dir = "benchmark_results_new-drawing"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
