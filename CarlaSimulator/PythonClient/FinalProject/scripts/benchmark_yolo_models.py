@@ -99,15 +99,34 @@ def benchmark_yolo_models(image_path):
                                    swapRB=True, crop=False)
         net.setInput(blob)
 
-        # Medir tempo de processamento
-        start_time = time.time()
-        outs = net.forward(output_layers)
-        inference_time = time.time() - start_time
+        # Warmup run to initialize any on-demand operations
+        print(f"Executando warmup para {model['name']}...")
+        _ = net.forward(output_layers)  # Warmup run, not timed
 
-        # Check for warning signs that CUDA wasn't used
-        if backend == "CUDA" and inference_time > 0.1:  # If inference is slow despite CUDA setting
-            print(f"Aviso: Tempo de inferência sugere que CUDA não foi usado efetivamente")
-            backend = "CPU"  # Override the backend label
+        # Multiple timing runs for more stable measurements
+        num_runs = 5
+        print(f"Realizando {num_runs} medições de inferência...")
+        inference_times = []
+
+        for i in range(num_runs):
+            start_time = time.time()
+            outs = net.forward(output_layers)
+            end_time = time.time()
+            current_time = end_time - start_time
+            inference_times.append(current_time)
+            print(f"  Run {i+1}/{num_runs}: {current_time:.4f}s")
+
+        # Calculate statistics
+        inference_time = sum(inference_times) / len(inference_times)
+        min_time = min(inference_times)
+        max_time = max(inference_times)
+        std_dev = np.std(inference_times)
+
+        print(f"Estatísticas de tempo de inferência:")
+        print(f"  Média: {inference_time:.4f}s")
+        print(f"  Mínimo: {min_time:.4f}s")
+        print(f"  Máximo: {max_time:.4f}s")
+        print(f"  Desvio padrão: {std_dev:.4f}s")
 
         # Processar detecções
         boxes = []
