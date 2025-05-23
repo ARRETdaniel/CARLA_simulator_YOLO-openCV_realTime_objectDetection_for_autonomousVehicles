@@ -49,6 +49,7 @@ from PIL import Image
 '''TEST CAMERA'''
 from carla.util import print_over_same_line
 
+from optimized_yolo import OptimizedYOLO, infer_image_optimized
 from yolo_utils import infer_image, show_image
 from performance_metrics import PerformanceMetrics
 from results_reporter import ResultsReporter
@@ -58,6 +59,7 @@ from results_reporter import ResultsReporter
 
 # OPEN CV2 WITH DARKNET WEIGHTS ETC.
 
+'''
 # Give the configuration, weight and labels files for the model
 model_configuration = '.\yolov3-coco\yolov3.cfg';
 model_weights = '.\yolov3-coco\yolov3.weights';
@@ -73,8 +75,22 @@ net = cv2.dnn.readNetFromDarknet(model_configuration, model_weights)
 layer_names = net.getLayerNames()
 layer_names = [layer_names[i-1] for i in net.getUnconnectedOutLayers()]
 #layer_names = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
+'''
 
+# Initialize the optimized YOLO detector
+# Using tiny model with 320x320 input for performance
+yolo_detector = OptimizedYOLO(
+    model_type="tiny",           # Using tiny model for speed
+    input_size=(320, 320),       # Smaller input resolution for better performance
+    confidence_threshold=0.5,    # Only detections above 50% confidence
+    nms_threshold=0.3,          # NMS threshold
+    use_opencl=True             # Use OpenCL acceleration
+)
 
+# Generate colors for visualization
+np.random.seed(42)  # For reproducible colors
+# Get the labels from the YOLO detector
+labels = yolo_detector.labels
 """
 Configurable params
 """
@@ -1083,7 +1099,14 @@ def exec_waypoint_nav_demo(args):
 
             #height = on_car_camera.height
             #width = on_car_camera.width
+            # Replace your current infer_image call with:
+            frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image_optimized(
+                yolo_detector,
+                frame_obj_to_detect,
+                metrics=metrics
+            )  # If you're using metrics
 
+            '''
             if count_obg_detection == 0:
                 frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image(net, layer_names,
                                         sensor_data['CAMERA'].height, sensor_data['CAMERA'].width,
@@ -1095,6 +1118,7 @@ def exec_waypoint_nav_demo(args):
                                         frame_obj_to_detect, colors, labels, boxes, confidences,
                                         classids, idxs, infer=False, metrics=metrics)
                 count_obg_detection = (count_obg_detection + 1) % 6
+            '''
             # Add this line to check for stop signs and display warning
             #frame_obj_to_detect = display_object_warnings(frame_obj_to_detect, boxes, confidences,
              #                                        classids, idxs, metrics=metrics)
@@ -1103,7 +1127,11 @@ def exec_waypoint_nav_demo(args):
             frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
 
             # Show the frame with detections and warnings
-            cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
+            try:
+                cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
+                cv2.waitKey(1)
+            except Exception as e:
+                print(f"Warning: Display error: {e}")
             #print("\nidexs:",idxs)
             #print("\nconfidences:",confidences)
             #print("\nclassids:",classids)
