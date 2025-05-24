@@ -32,14 +32,23 @@ WARNING_OVERLAYS = {}
 # Last audio warning timestamps
 last_audio_warning = {}
 
-class OptimizedYOLO:
+class YOLO:
     def __init__(self, model_type="tiny", input_size=(320, 320),
+    #def __init__(self, model_type="tiny", input_size=(416, 416),
+    #def __init__(self, model_type="tiny", input_size=(320, 320),
+    #def __init__(self, model_type="full", input_size=(512, 512),
+    #def __init__(self, model_type="tiny", input_size=(608, 608),
                  confidence_threshold=0.5, nms_threshold=0.3,
-                 use_opencl=True):
+                 use_opencl=False):
         """Initialize the optimized YOLO detector
 
         Args:
-            model_type: "tiny" for YOLOv3-tiny, "full" for YOLOv3
+            model_type: Model type to use:
+                - "tiny": YOLOv3-tiny (fast but less accurate)
+                - "tiny-custom": Custom-trained tiny model
+                - "v3": Full YOLOv3 (more accurate but slower)
+                - "v4": YOLOv4 from yolov3-coco folder
+                - "v4-external": YOLOv4 from yolov4-coco folder
             input_size: Network input size (smaller = faster)
             confidence_threshold: Detection confidence threshold
             nms_threshold: Non-maximum suppression threshold
@@ -51,12 +60,80 @@ class OptimizedYOLO:
         self.confidence_threshold = confidence_threshold
         self.nms_threshold = nms_threshold
 
+        # For frame skipping
+        self.skip_frame = False
+
+        # Store previous detections for persistence
+        self.prev_boxes = []
+        self.prev_confidences = []
+        self.prev_classids = []
+
+        # Detection buffer for reusing in _process_detections
+        self.detection_buffer = {
+            'boxes': [],
+            'confidences': [],
+            'classids': []
+        }
+
+        # Debugging and performance monitoring
+        self.debug = True  # Enable/disable detailed timing info
+        self.fps_history = deque(maxlen=30)  # Store FPS history for smoothing
+
+        # Define relevant classes for driving scenarios
+        self.relevant_classes = {
+            'person': True,
+            'bicycle': True,
+            'car': True,
+            'motorcycle': True,
+            'bus': True,
+            'truck': True,
+            'traffic light': True,
+            'stop sign': True,
+            'parking meter': True,
+            'fire hydrant': True  # Important for emergency vehicles
+        }
+
+        # Class-specific confidence thresholds - THIS NEEDS TO BE DEFINED BEFORE WARMUP!
+        self.class_thresholds = {
+            'person': 0.65,        # Higher threshold to avoid false positives
+            'car': 0.45,           # Cars are easier to detect
+            'truck': 0.45,
+            'bus': 0.45,
+            'traffic light': 0.50,
+            'stop sign': 0.45,
+            'bicycle': 0.55,
+            'motorcycle': 0.55,
+            'default': confidence_threshold  # Default for other classes
+        }
+
+        # For temporal consistency
+        self.detection_history = {}  # Track detections over time
+        self.detection_threshold = 2  # Require at least 2 consecutive detections
+        self.max_history = 5  # Keep track of last 5 frames
+
         # Load configuration based on model type
-        #if model_type == "tiny":
-        if False:
+        if model_type == "tiny":
             self.config_path = './yolov3-coco/yolov3-tiny.cfg'
             self.weights_path = './yolov3-coco/yolov3-tiny.weights'
+        elif model_type == "tiny-custom":
+            # Custom-trained tiny model on specific objects
+            self.config_path = './yolov3-coco/yolov3-tiny-obj.cfg'
+            self.weights_path = './yolov3-coco/yolov3-tiny-obj_5000.weights'
+        elif model_type == "v3":
+            # Full YOLOv3 model
+            self.config_path = './yolov3-coco/yolov3.cfg'
+            self.weights_path = './yolov3-coco/yolov3.weights'
+        elif model_type == "v4":
+            # YOLOv4 model - newer and often more accurate than v3
+            self.config_path = './yolov3-coco/yolov4.cfg'
+            self.weights_path = './yolov3-coco/yolov4.weights'
+        elif model_type == "v4-external":
+            # YOLOv4 model from the separate directory
+            self.config_path = './yolov4-coco/yolov4.cfg'
+            self.weights_path = './yolov4-coco/yolov4.weights'
         else:
+            # Default to YOLOv3
+            print(f"Warning: Unknown model type '{model_type}', defaulting to YOLOv3")
             self.config_path = './yolov3-coco/yolov3.cfg'
             self.weights_path = './yolov3-coco/yolov3.weights'
 
@@ -77,9 +154,14 @@ class OptimizedYOLO:
 
         # Set backend
         if use_opencl:
-            self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
-            self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_OPENCL)
-            print("Using OpenCL acceleration")
+            try:
+                self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+                self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_OPENCL)
+                print("Using OpenCL acceleration")
+            except Exception as e:
+                print(f"OpenCL acceleration error: {e}. Falling back to CPU.")
+                self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_DEFAULT)
+                self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
         else:
             self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_DEFAULT)
             self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
@@ -95,27 +177,8 @@ class OptimizedYOLO:
         # Create audio executor thread pool (single thread to avoid spawning many threads)
         self.audio_thread = None
 
-        # For frame skipping
-        self.skip_frame = False
-
-        # Store previous detections for persistence
-        self.prev_boxes = []
-        self.prev_confidences = []
-        self.prev_classids = []
-
-        # Detection buffer for reusing in _process_detections
-        self.detection_buffer = {
-            'boxes': [],
-            'confidences': [],
-            'classids': []
-        }
-
-        # Warm-up the network with a dummy image
+        # NOW it's safe to perform warmup after all attributes have been initialized
         self._warmup()
-
-        # Debugging and performance monitoring
-        self.debug = True  # Enable/disable detailed timing info
-        self.fps_history = deque(maxlen=30)  # Store FPS history for smoothing
 
     def _check_files(self):
         """Check if model files exist"""
@@ -128,7 +191,7 @@ class OptimizedYOLO:
 
     def _warmup(self):
         """Perform a warmup inference to initialize the network"""
-        dummy_image = np.zeros((416, 416, 3), dtype=np.uint8)
+        dummy_image = np.zeros((self.input_size[1], self.input_size[0], 3), dtype=np.uint8)
         self.detect(dummy_image, warmup=True)
         print("Network warm-up complete")
 
@@ -220,7 +283,7 @@ class OptimizedYOLO:
             # Create a cleaner, more readable performance report
             performance_str = (
                 f"\n{'=' * 35}\n"
-                f"YOLO Performance Metrics:\n"
+                f"YOLO-{self.model_type.upper()} ({self.input_size[0]}×{self.input_size[1]}) Metrics:\n"
                 f"  ⏱️ Preprocessing: {preprocess_time*1000:.1f}ms\n"
                 f"  🧠 Inference:     {inference_time*1000:.1f}ms\n"
                 f"  🔍 Postprocess:   {postprocess_time*1000:.1f}ms\n"
@@ -237,6 +300,21 @@ class OptimizedYOLO:
 
         # Draw results on the image
         img = self._draw_results(img, boxes, confidences, classids, indices)
+
+        # After NMS
+        if not warmup and len(indices) > 0:
+            # Handle different return types from cv2.dnn.NMSBoxes
+            idx_list = indices if isinstance(indices, tuple) else indices.flatten()
+
+            # Check if any detection is a person
+            has_person = False
+            for i in idx_list:
+                if i < len(classids) and classids[i] < len(self.labels) and self.labels[classids[i]] == 'person':
+                    has_person = True
+                    break
+
+            if has_person:
+                indices = self._apply_temporal_consistency(boxes, confidences, classids, indices)
 
         return img, boxes, confidences, classids, indices
 
@@ -256,8 +334,14 @@ class OptimizedYOLO:
                 classid = np.argmax(scores)
                 confidence = scores[classid]
 
-                # Filter by confidence threshold
-                if confidence > self.confidence_threshold:
+                # Get label
+                label = self.labels[classid] if classid < len(self.labels) else f"unknown-{classid}"
+
+                # Get class-specific threshold
+                threshold = self.class_thresholds.get(label, self.class_thresholds['default'])
+
+                # Apply class-specific threshold
+                if confidence > threshold and label in self.relevant_classes:
                     # Scale the bounding box coordinates to the image size
                     box = detection[0:4] * np.array([width, height, width, height])
                     center_x, center_y, box_width, box_height = box.astype('int')
@@ -276,7 +360,111 @@ class OptimizedYOLO:
         self.detection_buffer['confidences'] = confidences
         self.detection_buffer['classids'] = classids
 
-        return boxes, confidences, classids
+        # After creating boxes, confidences, and classids lists, add this filtering:
+        filtered_boxes = []
+        filtered_confidences = []
+        filtered_classids = []
+
+        for i in range(len(boxes)):
+            x, y, w, h = boxes[i]
+            class_id = classids[i]
+            label = self.labels[class_id] if class_id < len(self.labels) else "unknown"
+
+            # Skip unrealistically small or large objects
+            if label == 'person':
+                # People shouldn't be too small or too large
+                person_area = w * h
+                image_area = width * height
+                person_ratio = person_area / image_area
+
+                # Skip if the detected person is unrealistically small or large
+                if person_ratio < 0.005 or person_ratio > 0.8:
+                    continue
+
+                # People should generally be in the bottom 2/3 of the frame (not floating in the sky)
+                if y < height / 3:
+                    continue
+            '''
+            elif label == 'car' or label == 'truck' or label == 'bus':
+                vehicle_area = w * h
+                image_area = width * height
+                vehicle_ratio = vehicle_area / image_area
+
+                # Skip unrealistically small or large vehicles
+                if vehicle_ratio < 0.003 or vehicle_ratio > 0.9:
+                    continue
+
+                # Vehicles should be in the bottom 2/3 of the frame
+                if y < height / 3:
+                    continue
+            '''
+
+            # Similar rules for cars, traffic lights, etc.
+            # ...
+
+            filtered_boxes.append(boxes[i])
+            filtered_confidences.append(confidences[i])
+            filtered_classids.append(classids[i])
+
+        return filtered_boxes, filtered_confidences, filtered_classids
+
+    def _apply_temporal_consistency(self, boxes, confidences, classids, indices):
+        """Filter detections based on temporal consistency"""
+        current_frame_detections = {}
+        consistent_indices = []
+
+        # Process current frame detections
+        for i in indices.flatten() if len(indices) > 0 else []:
+            class_id = classids[i]
+            label = self.labels[class_id] if class_id < len(self.labels) else "unknown"
+            box = boxes[i]
+
+            # Only apply temporal filtering to person class to avoid false positives
+            if label == 'person':
+                # Create a detection key based on position (rough approximation)
+                x, y, w, h = box
+                center_x, center_y = x + w//2, y + h//2
+                # Discretize the position to handle small movements
+                pos_key = f"{center_x//20}_{center_y//20}"
+                det_key = f"{label}_{pos_key}"
+
+                # Record this detection
+                current_frame_detections[det_key] = i
+
+                # Check if this is consistent with previous detections
+                if det_key in self.detection_history:
+                    self.detection_history[det_key] += 1
+                    if self.detection_history[det_key] >= self.detection_threshold:
+                        consistent_indices.append(i)
+                else:
+                    self.detection_history[det_key] = 1
+                    # For new detections, only include if confidence is high
+                    if confidences[i] > self.class_thresholds.get(label, 0.7):
+                        consistent_indices.append(i)
+            else:
+                # Non-person detections don't need temporal consistency checks
+                consistent_indices.append(i)
+
+        # Update history - remove old detections not in this frame
+        keys_to_remove = []
+        for key in self.detection_history:
+            if key not in current_frame_detections:
+                self.detection_history[key] -= 1
+                if self.detection_history[key] <= 0:
+                    keys_to_remove.append(key)
+
+        for key in keys_to_remove:
+            del self.detection_history[key]
+
+        # If temporal filtering resulted in empty detections but we had some originally,
+        # use the highest confidence detections as a fallback
+        if not consistent_indices and len(indices) > 0:
+            # Get top 3 highest confidence detections
+            conf_indices = [(i, confidences[i]) for i in indices.flatten()]
+            conf_indices.sort(key=lambda x: x[1], reverse=True)
+            consistent_indices = [idx for idx, _ in conf_indices[:3]]
+
+        return np.array(consistent_indices)
 
     def _draw_results(self, img, boxes, confidences, classids, indices):
         """Draw detection results and warnings on the image"""
@@ -309,6 +497,52 @@ class OptimizedYOLO:
             idx_list = indices.flatten()
         else:
             idx_list = []
+
+        # Add context-based validation
+        validated_indices = []
+
+        if len(idx_list) > 0:
+            # First pass - collect all detections
+            all_detections = []
+            for i in idx_list:
+                x, y, w, h = boxes[i]
+                class_id = classids[i]
+                label = self.labels[class_id] if class_id < len(self.labels) else "unknown"
+                confidence = confidences[i]
+                all_detections.append((label, confidence, x, y, w, h))
+
+            # Second pass - validate each detection with context
+            for i in idx_list:
+                class_id = classids[i]
+                label = self.labels[class_id] if class_id < len(self.labels) else "unknown"
+
+                # Example context rule: If an object is classified as a person
+                # but is overlapping significantly with a trash can or bench,
+                # it's likely a misclassification
+                if label == 'person':
+                    x, y, w, h = boxes[i]
+                    person_box = [x, y, x+w, y+h]
+
+                    # Check for overlapping objects
+                    is_valid = True
+                    for other_label, other_conf, ox, oy, ow, oh in all_detections:
+                        if other_label in ['bench', 'suitcase', 'backpack']:
+                            other_box = [ox, oy, ox+ow, oy+oh]
+                            overlap = self._calculate_overlap(person_box, other_box)
+
+                            # If significant overlap with common false positive objects
+                            if overlap > 0.6:
+                                is_valid = False
+                                break
+
+                    if is_valid:
+                        validated_indices.append(i)
+                else:
+                    # For other classes, just validate normally
+                    validated_indices.append(i)
+
+            # Use validated_indices instead of idx_list for drawing
+            idx_list = validated_indices
 
         # Draw boxes and collect warnings
         for i in idx_list:
@@ -449,6 +683,32 @@ class OptimizedYOLO:
 
         return img
 
+    def _calculate_overlap(self, box1, box2):
+        """Calculate intersection over union between two boxes"""
+        # Convert to x1, y1, x2, y2 format
+        # box format: [x1, y1, x2, y2]
+
+        # Calculate intersection area
+        x_left = max(box1[0], box2[0])
+        y_top = max(box1[1], box2[1])
+        x_right = min(box1[2], box2[2])
+        y_bottom = min(box1[3], box2[3])
+
+        if x_right < x_left or y_bottom < y_top:
+            return 0.0
+
+        intersection_area = (x_right - x_left) * (y_bottom - y_top)
+
+        # Calculate union area
+        box1_area = (box1[2] - box1[0]) * (box1[3] - box1[1])
+        box2_area = (box2[2] - box2[0]) * (box2[3] - box2[1])
+        union_area = box1_area + box2_area - intersection_area
+
+        # Calculate IoU
+        iou = intersection_area / union_area if union_area > 0 else 0
+
+        return iou
+
     def _play_audio_warning(self, warning_type):
         """Play audio warning for critical detections"""
         # Check if we should play a warning (avoid too frequent warnings)
@@ -482,7 +742,6 @@ class OptimizedYOLO:
             self.audio_thread.start()
         except Exception as e:
             print(f"Warning: Audio playback error: {e}")
-
 
 # Function to infer image compatible with original code
 def infer_image_optimized(yolo, img, metrics=None):

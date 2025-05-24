@@ -49,8 +49,8 @@ from PIL import Image
 '''TEST CAMERA'''
 from carla.util import print_over_same_line
 
-from optimized_yolo import OptimizedYOLO, infer_image_optimized
-from yolo_utils import infer_image, show_image
+from yolo import YOLO, infer_image_optimized
+#from yolo_utils import infer_image, show_image
 from performance_metrics import PerformanceMetrics
 from results_reporter import ResultsReporter
 
@@ -79,12 +79,12 @@ layer_names = [layer_names[i-1] for i in net.getUnconnectedOutLayers()]
 
 # Initialize the optimized YOLO detector
 # Using tiny model with 320x320 input for performance
-yolo_detector = OptimizedYOLO(
-    model_type="tiny",           # Using tiny model for speed
-    input_size=(320, 320),       # Smaller input resolution for better performance
-    confidence_threshold=0.5,    # Only detections above 50% confidence
-    nms_threshold=0.3,          # NMS threshold
-    use_opencl=True             # Use OpenCL acceleration
+yolo_detector = YOLO(
+    model_type="v3",           # Using tiny model for speed
+    input_size=(416, 416),       # Smaller input resolution for better performance
+#    confidence_threshold=0.5,    # Only detections above 50% confidence
+#    nms_threshold=0.3,          # NMS threshold
+    use_opencl=False             # Use OpenCL acceleration
 )
 
 # Generate colors for visualization

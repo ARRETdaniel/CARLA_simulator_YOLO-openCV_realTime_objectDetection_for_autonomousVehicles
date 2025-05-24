@@ -337,7 +337,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Benchmark de modelos YOLO com imagem real")
-    parser.add_argument("-i", "--image", default="../_out/episode_3360/frame_camera/000960.png",
+    parser.add_argument("-i", "--image", default="../_out/episode_3360/frame_camera/000001.png",
                       help="Caminho para imagem de teste")
     args = parser.parse_args()
 
