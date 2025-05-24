@@ -227,31 +227,37 @@ def benchmark_yolo_models(image_path):
 
     return results
 
-def generate_performance_graphs(results, output_dir):
+def generate_performance_graphs(resultados, diretorio_saida):
     """
-    Gera gráficos comparativos de desempenho dos modelos YOLO.
+    Gera gráficos comparativos de desempenho dos modelos YOLOv8.
+
+    Args:
+        resultados (dict): Dicionário com resultados do benchmark
+        diretorio_saida (str): Diretório para salvar os gráficos
     """
     # Extrair dados
-    models = list(results.keys())
-    inference_times = [results[model]['inference_time'] for model in models]
-    fps_values = [results[model]['fps'] for model in models]
-    detection_counts = [results[model]['detections'] for model in models]
-    backends = [results[model]['backend'] for model in models]
+    modelos = list(resultados.keys())
+    tempos_inferencia = [resultados[modelo]['inference_time'] for modelo in modelos]
+    valores_fps = [resultados[modelo]['fps'] for modelo in modelos]
+    contagens_deteccoes = [resultados[modelo]['detections'] for modelo in modelos]
+    backends = [resultados[modelo]['backend'] for modelo in modelos]
 
     # Cores para cada modelo
-    model_colors = {
-        'YOLOv3': '#3498db',     # Azul
-        'YOLOv4': '#e74c3c',     # Vermelho
-        'YOLOv3-tiny': '#2ecc71' # Verde
+    modelo_cores = {
+        'YOLOv8n': '#3498db',  # Azul
+        'YOLOv8s': '#e74c3c',  # Vermelho
+        'YOLOv8m': '#2ecc71',  # Verde
     }
-    colors = [model_colors.get(model, '#95a5a6') for model in models]
+    cores = [modelo_cores.get(modelo, '#95a5a6') for modelo in modelos]
 
-    # Precisão estimada (baseado em benchmarks gerais)
-    # mAP (@0.5 IoU) no dataset COCO
-    accuracy = {
-        'YOLOv3': 55.3,
-        'YOLOv4': 62.8,
-        'YOLOv3-tiny': 33.1
+    # Precisão estimada (mAP@0.5-0.95 no COCO val2017)
+    # Fonte: https://docs.ultralytics.com/models/yolov8/
+    precisao = {
+        'YOLOv8n': 37.3,
+        'YOLOv8s': 44.9,
+        'YOLOv8m': 50.2,
+        'YOLOv8l': 52.9,
+        'YOLOv8x': 53.9
     }
 
     # Figura 1: Tempo de Processamento vs FPS
@@ -259,15 +265,15 @@ def generate_performance_graphs(results, output_dir):
 
     # Gráfico de barras para tempo de inferência
     plt.subplot(2, 1, 1)
-    bars = plt.bar(models, inference_times, color=colors, alpha=0.8)
+    barras = plt.bar(modelos, tempos_inferencia, color=cores, alpha=0.8)
     plt.title('Tempo de Processamento por Frame', fontsize=14, fontweight='bold')
     plt.ylabel('Tempo (segundos)', fontsize=12)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
 
     # Adicionar valores nas barras
-    for bar, time_val in zip(bars, inference_times):
-        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.01,
-                f'{time_val:.4f}s', ha='center', fontweight='bold')
+    for barra, tempo_val in zip(barras, tempos_inferencia):
+        plt.text(barra.get_x() + barra.get_width()/2, barra.get_height() + 0.01,
+                f'{tempo_val:.4f}s', ha='center', fontweight='bold')
 
     # Adicionar informação sobre backend (CPU/GPU)
     for i, backend in enumerate(backends):
@@ -276,68 +282,93 @@ def generate_performance_graphs(results, output_dir):
 
     # Gráfico de barras para FPS
     plt.subplot(2, 1, 2)
-    bars = plt.bar(models, fps_values, color=colors, alpha=0.8)
+    barras = plt.bar(modelos, valores_fps, color=cores, alpha=0.8)
     plt.title('Taxa de Frames por Segundo (FPS)', fontsize=14, fontweight='bold')
     plt.ylabel('FPS', fontsize=12)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
 
     # Adicionar valores nas barras
-    for bar, fps in zip(bars, fps_values):
-        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.2,
+    for barra, fps in zip(barras, valores_fps):
+        plt.text(barra.get_x() + barra.get_width()/2, barra.get_height() + 0.2,
                 f'{fps:.2f} FPS', ha='center', fontweight='bold')
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle('Comparação de Desempenho entre Modelos YOLO', fontsize=16, fontweight='bold')
+    plt.suptitle('Comparação de Desempenho entre Modelos YOLOv8', fontsize=16, fontweight='bold')
 
     # Salvar figura 1
-    plt.savefig(os.path.join(output_dir, 'yolo_performance_time_fps.pdf'), format='pdf', bbox_inches='tight')
-    plt.savefig(os.path.join(output_dir, 'yolo_performance_time_fps.png'), format='png', dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(diretorio_saida, 'yolov8_desempenho_tempo_fps.pdf'), format='pdf', bbox_inches='tight')
+    plt.savefig(os.path.join(diretorio_saida, 'yolov8_desempenho_tempo_fps.png'), format='png', dpi=300, bbox_inches='tight')
 
-    # Figura 2: Comparação entre Precisão (mAP), Velocidade (FPS) e Número de Detecções
+    # Figura 2: Precisão vs Velocidade vs Detecções
     plt.figure(figsize=(14, 10))
 
-    # Subplot para FPS vs mAP
+    # Gráfico de dispersão para Precisão vs FPS
     plt.subplot(2, 1, 1)
-    for model in models:
-        plt.scatter(accuracy.get(model, 0), results[model]['fps'],
-                  s=100, color=model_colors.get(model, '#95a5a6'), label=model, alpha=0.8)
-        plt.annotate(model,
-                   (accuracy.get(model, 0), results[model]['fps']),
+    for modelo in modelos:
+        plt.scatter(precisao.get(modelo, 0), resultados[modelo]['fps'],
+                  s=100, color=modelo_cores.get(modelo, '#95a5a6'), label=modelo, alpha=0.8)
+        plt.annotate(modelo,
+                   (precisao.get(modelo, 0), resultados[modelo]['fps']),
                    xytext=(5, 5), textcoords='offset points',
                    bbox=dict(boxstyle='round,pad=0.3', fc='yellow', alpha=0.3))
 
     plt.title('Relação entre Precisão e Velocidade', fontsize=14, fontweight='bold')
-    plt.xlabel('Precisão (mAP@0.5)', fontsize=12)
+    plt.xlabel('Precisão (mAP@0.5-0.95)', fontsize=12)
     plt.ylabel('Velocidade (FPS)', fontsize=12)
     plt.grid(True, linestyle='--', alpha=0.7)
 
-    # Subplot para Número de Detecções
+    # Gráfico de barras para Número de Detecções
     plt.subplot(2, 1, 2)
-    bars = plt.bar(models, detection_counts, color=colors, alpha=0.8)
+    barras = plt.bar(modelos, contagens_deteccoes, color=cores, alpha=0.8)
     plt.title('Número de Objetos Detectados', fontsize=14, fontweight='bold')
     plt.ylabel('Quantidade', fontsize=12)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
 
     # Adicionar valores nas barras
-    for bar, count in zip(bars, detection_counts):
-        plt.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.1,
-                f'{count}', ha='center', fontweight='bold')
+    for barra, contagem in zip(barras, contagens_deteccoes):
+        plt.text(barra.get_x() + barra.get_width()/2, barra.get_height() + 0.1,
+                f'{contagem}', ha='center', fontweight='bold')
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    plt.suptitle('Análise de Eficácia dos Modelos YOLO', fontsize=16, fontweight='bold')
+    plt.suptitle('Análise de Eficácia dos Modelos YOLOv8', fontsize=16, fontweight='bold')
 
     # Salvar figura 2
-    plt.savefig(os.path.join(output_dir, 'yolo_performance_accuracy.pdf'), format='pdf', bbox_inches='tight')
-    plt.savefig(os.path.join(output_dir, 'yolo_performance_accuracy.png'), format='png', dpi=300, bbox_inches='tight')
+    plt.savefig(os.path.join(diretorio_saida, 'yolov8_desempenho_precisao.pdf'), format='pdf', bbox_inches='tight')
+    plt.savefig(os.path.join(diretorio_saida, 'yolov8_desempenho_precisao.png'), format='png', dpi=300, bbox_inches='tight')
 
-    # Informar sobre os arquivos gerados
-    print(f"\nGráficos de desempenho salvos em {output_dir}/")
+    # Gerar mapa de calor para tempos de inferência
+    plt.figure(figsize=(10, 6))
+    dados = np.array([tempos_inferencia])
+    plt.imshow(dados, cmap='viridis')
+    plt.colorbar(label='Tempo de Inferência (segundos)')
+    plt.xticks(range(len(modelos)), modelos, rotation=45)
+    plt.yticks([])
+    plt.title('Comparação de Tempo de Inferência')
+    plt.tight_layout()
+    plt.savefig(os.path.join(diretorio_saida, 'mapa_calor_tempos.png'), dpi=300)
+
+    # Criar tabela comparativa em CSV
+    with open(os.path.join(diretorio_saida, 'comparacao_modelos.csv'), 'w') as f:
+        f.write("Modelo,Tempo de Inferência (s),FPS,Detecções,Backend\n")
+        for modelo in modelos:
+            r = resultados[modelo]
+            f.write(f"{modelo},{r['inference_time']:.4f},{r['fps']:.2f},{r['detections']},{r['backend']}\n")
+
+    # Imprimir resumo
+    print("\nResumo do Benchmark:")
+    print(f"{'Modelo':<12} {'Tempo (s)':<10} {'FPS':<8} {'Detecções':<10} {'Backend':<6}")
+    print("-" * 50)
+    for modelo in modelos:
+        r = resultados[modelo]
+        print(f"{modelo:<12} {r['inference_time']:<10.4f} {r['fps']:<8.2f} {r['detections']:<10} {r['backend']:<6}")
+
+    print(f"\nResultados detalhados e gráficos salvos em {diretorio_saida}/")
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Benchmark de modelos YOLO com imagem real")
-    parser.add_argument("-i", "--image", default="../_out/episode_3360/frame_camera/000001.png",
+    parser.add_argument("-i", "--image", default="../_out/episode_3360/frame_camera/000970.png",
                       help="Caminho para imagem de teste")
     args = parser.parse_args()
 

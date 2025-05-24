@@ -3,12 +3,12 @@
 ┌─────────────────────┐     ┌──────────────────────┐
 │ CARLA Client (3.6)  │     │ Detection Server (3.12)
 │                     │     │                      │
-│ - CARLA integration │ ──► │ - YOLOv8 or YOLOv9   │
+│ - CARLA integration │ ──► │ - YOLOv8             │
 │ - Vehicle control   │     │ - GPU acceleration   │
-│ - Trajectory plan   │ ◄── │ - Modern libraries   │
-│ - Visualization     │     │ - High FPS proc.     │
+│ - Trajectory plan   │ ◄── │ - Driver assistance  │
+│ - Visualization     │     │ - High FPS proc.
 └─────────────────────┘     └──────────────────────┘
-      Socket
+                      Socket
 
 # YOLOv8 GPU Detection Server Setup
 
