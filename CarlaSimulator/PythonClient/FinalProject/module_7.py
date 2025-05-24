@@ -53,6 +53,7 @@ from yolo import YOLO, infer_image_optimized
 #from yolo_utils import infer_image, show_image
 from performance_metrics import PerformanceMetrics
 from results_reporter import ResultsReporter
+from detector_socket.detector_client import DetectionClient
 
 ## darknet imports
 #from pexpect import popen_spawn
@@ -77,6 +78,7 @@ layer_names = [layer_names[i-1] for i in net.getUnconnectedOutLayers()]
 #layer_names = [layer_names[i[0] - 1] for i in net.getUnconnectedOutLayers()]
 '''
 
+''' BEGORE SOCKET
 # Initialize the optimized YOLO detector
 # Using tiny model with 320x320 input for performance
 yolo_detector = YOLO(
@@ -86,11 +88,18 @@ yolo_detector = YOLO(
 #    nms_threshold=0.3,          # NMS threshold
     use_opencl=False             # Use OpenCL acceleration
 )
+'''
 
+''' BEFORE SOCKET
+'''
 # Generate colors for visualization
 np.random.seed(42)  # For reproducible colors
 # Get the labels from the YOLO detector
+
+# Initialize the detection client
+yolo_detector = DetectionClient(host="localhost", port=5555)
 labels = yolo_detector.labels
+
 """
 Configurable params
 """
@@ -1099,12 +1108,22 @@ def exec_waypoint_nav_demo(args):
 
             #height = on_car_camera.height
             #width = on_car_camera.width
+
+            try:
+                frame_obj_to_detect, boxes, confidences, classids, idxs = yolo_detector.detect_objects(frame_obj_to_detect)
+            except Exception as e:
+                print(f"Detection failed: {e}")
+                # Fall back to previous frame or empty results
+
+
+            ''' BEFORE SOCKET
             # Replace your current infer_image call with:
             frame_obj_to_detect, boxes, confidences, classids, idxs = infer_image_optimized(
                 yolo_detector,
                 frame_obj_to_detect,
                 metrics=metrics
             )  # If you're using metrics
+            '''
 
             '''
             if count_obg_detection == 0:
@@ -1624,3 +1643,12 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
+
+#  cleanup
+def cleanup():
+    # Other cleanup code...
+    yolo_detector.close()
+
+# Register cleanup
+import atexit
+atexit.register(cleanup)

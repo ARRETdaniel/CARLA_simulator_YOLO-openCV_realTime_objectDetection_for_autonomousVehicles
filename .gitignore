@@ -25,3 +25,5 @@ TEXTO_BASE
 TCC
 CURSOS
 Motion Planning for Self-Driving Cars
+*.pt
+__pycache__
