@@ -9,7 +9,7 @@
 │ - Visualization     │     │ - High FPS proc.     │
 └─────────────────────┘     └──────────────────────┘
       Socket
-      
+
 # YOLOv8 GPU Detection Server Setup
 
 ## System Requirements
@@ -46,5 +46,5 @@ pip install ultralytics==8.3.143 opencv-python==4.8.1.78 msgpack==1.0.7 msgpack-
 
 
 cd CarlaSimulator\PythonClient\FinalProject\detector_socket
-py -3.12 detector_server.py
 conda activate yolo_gpu
+python detector_server.py

@@ -7,7 +7,11 @@
 
 3. Mostrar feedback visual output do cv2 (warning, attention - aproching stop sign, vehicle nearby)
 
+4. Get the old features from YOLO.py and add to the detector server
 
 YOLO v4
 
 town2 seems to be a good city for tests
+
+
+I still dont have the feature from YOLO.py , warnings (car ahead, stop sign), cmd output with more infos related to the model times
