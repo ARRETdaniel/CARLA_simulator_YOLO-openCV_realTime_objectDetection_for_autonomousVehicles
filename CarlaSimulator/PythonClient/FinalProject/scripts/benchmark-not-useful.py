@@ -88,6 +88,14 @@ def detect_with_darknet(net, layer_names, image, input_size=(416, 416), conf_thr
     blob = cv2.dnn.blobFromImage(image, 1/255.0, input_size, swapRB=True, crop=False)
     net.setInput(blob)
 
+    # Try to use CUDA if available
+    try:
+        net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
+        net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+    except:
+        # Fallback to CPU if CUDA fails
+        pass
+
     # Get detections
     start_time = time.time()
     outs = net.forward(layer_names)
@@ -106,96 +114,154 @@ def detect_with_darknet(net, layer_names, image, input_size=(416, 416), conf_thr
 
             if confidence > conf_threshold:
                 # Get coordinates (YOLO format: center_x, center_y, width, height)
-                center_x = int(detection[0] * width)
-                center_y = int(detection[1] * height)
-                w = int(detection[2] * width)
-                h = int(detection[3] * height)
+                box = detection[0:4] * np.array([width, height, width, height])
+                (center_x, center_y, box_width, box_height) = box.astype("int")
 
                 # Calculate top-left corner coordinates
-                x = int(center_x - w / 2)
-                y = int(center_y - h / 2)
+                x = int(center_x - box_width / 2)
+                y = int(center_y - box_height / 2)
 
-                boxes.append([x, y, w, h])
+                boxes.append([x, y, int(box_width), int(box_height)])
                 confidences.append(float(confidence))
                 class_ids.append(class_id)
 
     # Apply non-maximum suppression
+    indices = []
     if len(boxes) > 0:
         indices = cv2.dnn.NMSBoxes(boxes, confidences, conf_threshold, nms_threshold)
         indices = indices.flatten() if len(indices) > 0 else []
-    else:
-        indices = []
 
     return boxes, confidences, class_ids, indices, inference_time
 
+# Modify detect_with_ultralytics function to measure only inference time consistently
+# Fix in the detect_with_ultralytics function for YOLOv8
 def detect_with_ultralytics(model_name, image, conf_threshold=0.5, device='cuda'):
     """Run detection with Ultralytics-based models (YOLOv5/v8)."""
     if 'yolov8' in model_name.lower():
-        # For YOLOv8
+        # For YOLOv8, handle the model differently
         try:
             from ultralytics import YOLO
+
+            # Load the model
             model = YOLO(model_name)
+
+            # Set the confidence threshold
             model.conf = conf_threshold
-        except ImportError:
-            print("Error: ultralytics package not installed. Please install with: pip install ultralytics")
-            return [], [], [], [], 0
+
+            # Convert image if needed
+            if isinstance(image, str):
+                img = cv2.imread(image)
+            else:
+                img = image.copy()
+
+            # Run inference with timing
+            start_time = time.time()
+            results = model(img, verbose=False)  # Disable verbose output
+            inference_time = time.time() - start_time
+
+            # Process results
+            boxes = []
+            confidences = []
+            class_ids = []
+
+            # Extract detections
+            if hasattr(results[0], 'boxes'):
+                detections = results[0].boxes
+                for i in range(len(detections)):
+                    box = detections.xyxy[i].cpu().numpy()
+                    x1, y1, x2, y2 = map(int, box)
+                    conf = float(detections.conf[i])
+                    cls_id = int(detections.cls[i])
+
+                    width = x2 - x1
+                    height = y2 - y1
+
+                    boxes.append([x1, y1, width, height])
+                    confidences.append(conf)
+                    class_ids.append(cls_id)
+
+            # Generate indices for all detections
+            indices = list(range(len(boxes)))
+
+            return boxes, confidences, class_ids, indices, inference_time
+
+        except Exception as e:
+            print(f"Error with YOLOv8: {e}")
+            # Try alternative implementation for YOLOv8
+            try:
+                # Load model through torch hub as a backup method
+                model = torch.hub.load('ultralytics/yolov5', 'custom',
+                                     path=model_name,
+                                     device=device)
+                model.conf = conf_threshold
+
+                # Rest of the function similar to YOLOv5
+                start_time = time.time()
+                results = model(image)
+                inference_time = time.time() - start_time
+
+                # Extract detections
+                detections = results.xyxy[0].cpu().numpy()
+
+                boxes = []
+                confidences = []
+                class_ids = []
+
+                for det in detections:
+                    x1, y1, x2, y2, conf, cls_id = det
+                    width = x2 - x1
+                    height = y2 - y1
+
+                    boxes.append([int(x1), int(y1), int(width), int(height)])
+                    confidences.append(float(conf))
+                    class_ids.append(int(cls_id))
+
+                indices = list(range(len(boxes)))
+                return boxes, confidences, class_ids, indices, inference_time
+
+            except Exception as e:
+                print(f"Failed alternative method for YOLOv8: {e}")
+                return [], [], [], [], 0
     else:
-        # For YOLOv5
+        # For YOLOv5, use the existing implementation
         try:
             model = torch.hub.load('ultralytics/yolov5', model_name, pretrained=True)
             model.conf = conf_threshold
+
+            # Use GPU if available
+            if device == 'cuda' and torch.cuda.is_available():
+                model = model.to(device)
+            else:
+                device = 'cpu'
+                model = model.to(device)
+
+            # Run inference
+            start_time = time.time()
+            results = model(image)
+            inference_time = time.time() - start_time
+
+            # Process results
+            detections = results.xyxy[0].cpu().numpy()
+
+            boxes = []
+            confidences = []
+            class_ids = []
+
+            for det in detections:
+                x1, y1, x2, y2, conf, cls_id = det
+                width = x2 - x1
+                height = y2 - y1
+
+                boxes.append([int(x1), int(y1), int(width), int(height)])
+                confidences.append(float(conf))
+                class_ids.append(int(cls_id))
+
+            indices = list(range(len(boxes)))
+            return boxes, confidences, class_ids, indices, inference_time
+
         except Exception as e:
-            print(f"Error loading {model_name}: {e}")
+            print(f"Error with YOLOv5: {e}")
             return [], [], [], [], 0
-
-    # Use GPU if available
-    if device == 'cuda' and torch.cuda.is_available():
-        model = model.to(device)
-    else:
-        device = 'cpu'
-        model = model.to(device)
-
-    # Run inference
-    start_time = time.time()
-    results = model(image)
-    inference_time = time.time() - start_time
-
-    # Convert detections to same format as other functions
-    boxes = []
-    confidences = []
-    class_ids = []
-
-    # Extract detections
-    if 'yolov8' in model_name.lower():
-        # YOLOv8 format
-        detections = results[0].boxes
-        for det in detections:
-            x1, y1, x2, y2 = map(int, det.xyxy[0].tolist())
-            conf = float(det.conf[0])
-            cls_id = int(det.cls[0])
-
-            width = x2 - x1
-            height = y2 - y1
-
-            boxes.append([x1, y1, width, height])
-            confidences.append(conf)
-            class_ids.append(cls_id)
-    else:
-        # YOLOv5 format
-        detections = results.xyxy[0].cpu().numpy()
-        for det in detections:
-            x1, y1, x2, y2, conf, cls_id = det
-            width = x2 - x1
-            height = y2 - y1
-
-            boxes.append([int(x1), int(y1), int(width), int(height)])
-            confidences.append(float(conf))
-            class_ids.append(int(cls_id))
-
-    # Generate indices for all detections (no NMS needed, it's done by the model)
-    indices = list(range(len(boxes)))
-
-    return boxes, confidences, class_ids, indices, inference_time
 
 def draw_detections(image, boxes, confidences, class_ids, indices, labels, colors):
     """Draw detection boxes on an image."""
@@ -224,6 +290,7 @@ def draw_detections(image, boxes, confidences, class_ids, indices, labels, color
 
     return image_copy
 
+# Fix for run_multiple_iterations function to handle CUDA backend issues
 def run_multiple_iterations(model_info, image, input_size, labels, colors, num_runs=5, conf_threshold=0.5):
     """Run multiple iterations of the model for reliable timing."""
     print(f"Running {model_info['name']} for {num_runs} iterations...")
@@ -233,29 +300,140 @@ def run_multiple_iterations(model_info, image, input_size, labels, colors, num_r
     for i in range(num_runs + 1):  # +1 for warmup
         try:
             if model_info['family'] == 'darknet':
-                # YOLOv3/v4 models
+                # YOLOv3/v4 models - Use CPU only for darknet models
                 net = cv2.dnn.readNetFromDarknet(model_info['cfg'], model_info['weights'])
 
-                # Set backend
-                if torch.cuda.is_available():
-                    # Don't try to use CUDA for OpenCV as it often causes issues
-                    backend = "CPU"
-                else:
-                    backend = "CPU"
+                # IMPORTANT: DO NOT set CUDA backend for darknet models - use CPU only
+                backend = "CPU"
 
                 # Get output layers
                 layer_names = net.getLayerNames()
-                output_layers = [layer_names[j[0]-1] if len(j) == 1 else layer_names[j-1] for j in net.getUnconnectedOutLayers()]
+                try:
+                    # Different versions of OpenCV have different return types
+                    output_indices = net.getUnconnectedOutLayers()
+                    if isinstance(output_indices, np.ndarray):
+                        if output_indices.ndim > 0 and isinstance(output_indices[0], np.ndarray):
+                            output_layers = [layer_names[j[0]-1] for j in output_indices]
+                        else:
+                            output_layers = [layer_names[j-1] for j in output_indices]
+                    else:
+                        output_layers = [layer_names[j-1] for j in output_indices]
+                except:
+                    # Fallback method
+                    output_layers = [layer_names[j-1] for j in net.getUnconnectedOutLayers().flatten()]
 
                 # Run detection
-                boxes, confidences, class_ids, indices, inference_time = detect_with_darknet(
-                    net, output_layers, image, input_size, conf_threshold)
+                blob = cv2.dnn.blobFromImage(image, 1/255.0, input_size, swapRB=True, crop=False)
+                net.setInput(blob)
+
+                start_time = time.time()
+                outs = net.forward(output_layers)
+                inference_time = time.time() - start_time
+
+                # Process detections
+                boxes = []
+                confidences = []
+                class_ids = []
+
+                for out in outs:
+                    for detection in out:
+                        scores = detection[5:]
+                        class_id = np.argmax(scores)
+                        confidence = scores[class_id]
+
+                        if confidence > conf_threshold:
+                            # Get coordinates
+                            center_x = int(detection[0] * image.shape[1])
+                            center_y = int(detection[1] * image.shape[0])
+                            w = int(detection[2] * image.shape[1])
+                            h = int(detection[3] * image.shape[0])
+
+                            # Rectangle coordinates
+                            x = int(center_x - w / 2)
+                            y = int(center_y - h / 2)
+
+                            boxes.append([x, y, w, h])
+                            confidences.append(float(confidence))
+                            class_ids.append(class_id)
+
+                # Apply non-maximum suppression
+                indices = []
+                if len(boxes) > 0:
+                    indices = cv2.dnn.NMSBoxes(boxes, confidences, conf_threshold, 0.4)
+                    if len(indices) > 0:
+                        if isinstance(indices, np.ndarray):
+                            indices = indices.flatten()
+                        else:
+                            indices = [int(i) for i in indices.flatten()]
 
             elif model_info['family'] == 'ultralytics':
-                # YOLOv5/v8 models
-                boxes, confidences, class_ids, indices, inference_time = detect_with_ultralytics(
-                    model_info['model'], image, conf_threshold)
+                # Use GPU for ultralytics models (YOLOv5/YOLOv8)
                 backend = "CUDA" if torch.cuda.is_available() else "CPU"
+
+                # Different handling based on model type
+                if 'yolov8' in model_info['model'].lower():
+                    from ultralytics import YOLO
+                    model = YOLO(model_info['model'])
+                    model.conf = conf_threshold
+
+                    # Run inference
+                    start_time = time.time()
+                    results = model(image, verbose=False)
+                    inference_time = time.time() - start_time
+
+                    # Process results
+                    boxes = []
+                    confidences = []
+                    class_ids = []
+
+                    # Extract detections from results
+                    if len(results) > 0:
+                        boxes_data = results[0].boxes
+                        if len(boxes_data) > 0:
+                            for j in range(len(boxes_data)):
+                                try:
+                                    box = boxes_data.xyxy[j].cpu().numpy()
+                                    x1, y1, x2, y2 = map(int, box)
+                                    width = x2 - x1
+                                    height = y2 - y1
+
+                                    boxes.append([x1, y1, width, height])
+                                    confidences.append(float(boxes_data.conf[j]))
+                                    class_ids.append(int(boxes_data.cls[j]))
+                                except:
+                                    continue
+
+                    indices = list(range(len(boxes)))
+
+                else:  # YOLOv5 models
+                    model = torch.hub.load('ultralytics/yolov5', model_info['model'], pretrained=True)
+                    model.conf = conf_threshold
+
+                    if torch.cuda.is_available():
+                        model = model.to('cuda')
+
+                    # Run inference
+                    start_time = time.time()
+                    results = model(image)
+                    inference_time = time.time() - start_time
+
+                    # Process results
+                    boxes = []
+                    confidences = []
+                    class_ids = []
+
+                    # Extract detections
+                    detections = results.xyxy[0].cpu().numpy()
+                    for det in detections:
+                        x1, y1, x2, y2, conf, cls_id = det
+                        width = x2 - x1
+                        height = y2 - y1
+
+                        boxes.append([int(x1), int(y1), int(width), int(height)])
+                        confidences.append(float(conf))
+                        class_ids.append(int(cls_id))
+
+                    indices = list(range(len(boxes)))
 
             else:
                 # Skip unsupported models
@@ -275,15 +453,16 @@ def run_multiple_iterations(model_info, image, input_size, labels, colors, num_r
 
         except Exception as e:
             print(f"Error during run {i}: {e}")
+            import traceback
+            traceback.print_exc()
             if i == 0:  # If even the warmup fails, return None
                 return None
 
-    # If no successful runs, return None
+    # Calculate statistics
     if not inference_times:
         print(f"No successful runs for {model_info['name']}")
         return None
 
-    # Calculate statistics
     avg_time = sum(inference_times) / len(inference_times)
     min_time = min(inference_times)
     max_time = max(inference_times)
@@ -324,7 +503,7 @@ def run_multiple_iterations(model_info, image, input_size, labels, colors, num_r
         'indices': all_detections[3]
     }
 
-def benchmark_yolo_models(image_path, output_dir="benchmark_results", conf_threshold=0.5, num_runs=5):
+def benchmark_yolo_models(image_path, output_dir="benchmark_results", conf_threshold=0.5, num_runs=5, selected_models=['all']):
     """
     Benchmark various YOLO models on an image and generate comprehensive performance metrics.
     """
@@ -361,7 +540,7 @@ def benchmark_yolo_models(image_path, output_dir="benchmark_results", conf_thres
 
     # Define models to test - simplified list for compatibility
     models = [
-        # Original darknet models (CPU only)
+        # Original darknet models
         {
             'name': 'YOLOv3',
             'family': 'darknet',
@@ -401,25 +580,40 @@ def benchmark_yolo_models(image_path, output_dir="benchmark_results", conf_thres
             'color': '#f39c12',  # Orange
             'input_size': (640, 640)
         },
+        # YOLOv8 models - use specific constructor for compatibility
         {
             'name': 'YOLOv8n',
             'family': 'ultralytics',
             'model': 'yolov8n.pt',
             'color': '#2980b9',  # Dark blue
-            'input_size': (640, 640)
+            'input_size': (640, 640),
+            'version': 8  # Add version flag to handle differently
         },
         {
             'name': 'YOLOv8s',
             'family': 'ultralytics',
             'model': 'yolov8s.pt',
             'color': '#8e44ad',  # Dark purple
-            'input_size': (640, 640)
+            'input_size': (640, 640),
+            'version': 8  # Add version flag to handle differently
         }
     ]
+
+    # Filter models based on selection
+    if 'all' not in selected_models:
+        models = [m for m in models if m['name'] in selected_models]
 
     # Results storage
     results = {}
     result_images = {}
+
+    # Warm up GPU with a dummy tensor operation
+    if torch.cuda.is_available():
+        print("Warming up GPU...")
+        dummy = torch.ones(1, 3, 640, 640).cuda()
+        for _ in range(10):  # Run 10 iterations to warm up
+            _ = dummy * 2
+        torch.cuda.synchronize()
 
     # Run benchmarks on each model
     for model_info in models:
@@ -600,6 +794,17 @@ def generate_performance_graphs(results, output_dir):
     plt.suptitle('YOLO Model Effectiveness Analysis', fontsize=16, fontweight='bold')
     plt.savefig(os.path.join(output_dir, 'yolo_performance_accuracy.png'), format='png', dpi=300, bbox_inches='tight')
 
+    # Create a timing heatmap
+    plt.figure(figsize=(10, 6))
+    data = np.array([inference_times])
+    plt.imshow(data, cmap='viridis')
+    plt.colorbar(label='Inference Time (seconds)')
+    plt.xticks(range(len(models)), models, rotation=45)
+    plt.yticks([])
+    plt.title('Inference Time Comparison')
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'timing_heatmap.png'), dpi=300)
+
     # Create a comparison summary table as CSV
     with open(os.path.join(output_dir, 'model_comparison.csv'), 'w') as f:
         f.write("Model,Inference Time (s),FPS,Detections,Min Time (s),Max Time (s),Std Dev,Backend\n")
@@ -621,15 +826,19 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Benchmark YOLO models")
-    parser.add_argument("-i", "--image", default="../_out/episode_3360/frame_camera/000001.png",
+    parser.add_argument("-i", "--image", default="../_out/episode_3360/frame_camera/000970.png",
                       help="Path to test image")
     parser.add_argument("-o", "--output", default="benchmark_results",
                       help="Output directory for results")
-    parser.add_argument("-c", "--confidence", type=float, default=0.5,
+    parser.add_argument("-c", "--confidence", type=float, default=0.3,  # Changed from 0.5
                       help="Confidence threshold for detection")
     parser.add_argument("-r", "--runs", type=int, default=5,
                       help="Number of timing runs for each model")
+    parser.add_argument("--models", nargs='+',
+                  choices=['YOLOv3', 'YOLOv4', 'YOLOv3-tiny', 'YOLOv5s', 'YOLOv5n', 'YOLOv8n', 'YOLOv8s', 'all'],
+                  default=['all'],
+                  help="Specific models to benchmark")
 
     args = parser.parse_args()
 
-    benchmark_yolo_models(args.image, args.output, args.confidence, args.runs)
+    benchmark_yolo_models(args.image, args.output, args.confidence, args.runs, args.models)
