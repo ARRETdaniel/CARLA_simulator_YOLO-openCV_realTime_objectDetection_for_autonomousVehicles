@@ -90,6 +90,27 @@ class DetectionServer:
             'scissors', 'teddy bear', 'hair drier', 'toothbrush'
         ]
 
+        # Define driving-relevant class IDs from COCO dataset
+        self.driving_relevant_classes = {
+            0: 'person',           # pedestrians
+            1: 'bicycle',          # cyclists
+            2: 'car',              # cars
+            3: 'motorcycle',       # motorcycles
+            5: 'bus',              # buses
+            7: 'truck',            # trucks
+            9: 'traffic light',    # traffic lights
+            11: 'stop sign',       # stop signs
+            13: 'bench',           # roadside objects
+            16: 'dog',             # animals on road
+            17: 'horse',           # animals on road
+            18: 'sheep',           # animals on road
+            19: 'cow',             # animals on road
+            24: 'backpack',        # pedestrian with backpack
+            25: 'umbrella',        # pedestrian with umbrella
+            28: 'suitcase',        # roadside objects
+            80: 'traffic cone'     # custom class for traffic cones if available
+        }
+
         # Initialize these BEFORE creating any threads
         self.running = True
         self.stop_event = threading.Event()
@@ -158,19 +179,23 @@ class DetectionServer:
 
     def _process_result(self, result, original_image):
         """Process an individual result from batch detection"""
-        # Similar to your existing process_image method, but for a single result
         height, width = original_image.shape[:2]
         filtered_boxes = []
         filtered_confidences = []
         filtered_class_ids = []
 
-        # Extract detections (similar to your existing code)
+        # Extract detections
         for box in result.boxes:
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             x, y = int(x1), int(y1)
             w, h = int(x2 - x1), int(y2 - y1)
             conf = float(box.conf[0])
             cls_id = int(box.cls[0])
+
+            # Only proceed if this is a driving-relevant class
+            if cls_id not in self.driving_relevant_classes:
+                continue
+
             label = self.labels[cls_id] if cls_id < len(self.labels) else "unknown"
 
             # Spatial context validation (adapted from your YOLOv3 implementation)
@@ -551,8 +576,13 @@ class DetectionServer:
         # Check if we have any results
         has_detections = False
         for r in results_fast:
-            if len(r.boxes) > 0:
-                has_detections = True
+            for box in r.boxes:
+                cls_id = int(box.cls[0])
+                # Only count driving-relevant detections
+                if cls_id in self.driving_relevant_classes:
+                    has_detections = True
+                    break
+            if has_detections:
                 break
 
         # If no detections with fast model or periodically, use accurate model
@@ -562,7 +592,7 @@ class DetectionServer:
         else:
             results = results_fast
 
-        # Debug visualization of raw detections
+        # Debug visualization of raw detections (if enabled)
         if debug_mode and debug_frame:
             debug_img = image_data.copy()
             for r in results:
@@ -591,6 +621,11 @@ class DetectionServer:
                 w, h = int(x2 - x1), int(y2 - y1)
                 conf = float(box.conf[0])
                 cls_id = int(box.cls[0])
+
+                # Skip non-driving relevant classes
+                if cls_id not in self.driving_relevant_classes:
+                    continue
+
                 label = self.labels[cls_id] if cls_id < len(self.labels) else "unknown"
 
                 # Spatial context validation with special handling for distant objects

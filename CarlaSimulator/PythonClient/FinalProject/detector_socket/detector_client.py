@@ -69,6 +69,46 @@ class DetectionClient:
         # Audio thread
         self.audio_thread = None
 
+        # Define driving-relevant classes for client-side filtering and visualization
+        self.driving_relevant_classes = {
+            0: 'person',           # pedestrians
+            1: 'bicycle',          # cyclists
+            2: 'car',              # cars
+            3: 'motorcycle',       # motorcycles
+            5: 'bus',              # buses
+            7: 'truck',            # trucks
+            9: 'traffic light',    # traffic lights
+            11: 'stop sign',       # stop signs
+            13: 'bench',           # roadside objects
+            16: 'dog',             # animals on road
+            17: 'horse',           # animals on road
+            18: 'sheep',           # animals on road
+            19: 'cow',             # animals on road
+            24: 'backpack',        # pedestrian with backpack
+            25: 'umbrella',        # pedestrian with umbrella
+            28: 'suitcase',        # roadside objects
+        }
+
+        # Custom colors for each class (make more visible in driving scenarios)
+        self.class_colors = {
+            0: (0, 0, 255),      # person: red
+            1: (0, 128, 255),    # bicycle: orange
+            2: (0, 255, 255),    # car: yellow
+            3: (0, 255, 128),    # motorcycle: yellow-green
+            5: (255, 0, 0),      # bus: blue
+            7: (255, 0, 128),    # truck: purple
+            9: (255, 255, 0),    # traffic light: cyan
+            11: (0, 255, 0),     # stop sign: green
+            13: (128, 128, 128), # bench: gray
+            16: (128, 0, 0),     # dog: dark blue
+            17: (128, 0, 128),   # horse: dark purple
+            18: (0, 0, 128),     # sheep: dark red
+            19: (0, 128, 0),     # cow: dark green
+            24: (128, 128, 0),   # backpack: dark cyan
+            25: (192, 192, 192), # umbrella: light gray
+            28: (255, 128, 128), # suitcase: light red
+        }
+
         # Connect to server
         self.connect()
 
@@ -162,15 +202,19 @@ class DetectionClient:
                 x, y, w, h = box
                 conf = confidences[i]
                 cls_id = class_ids[i]
+
+                # Skip any non-driving relevant objects that might have slipped through
+                if cls_id not in self.driving_relevant_classes:
+                    continue
+
                 label = self.labels[cls_id] if cls_id < len(self.labels) else "unknown"
 
-                # Generate color based on class ID
-                hue = cls_id / len(self.labels)
-                color = [int(c * 255) for c in colorsys.hsv_to_rgb(hue, 0.7, 1.0)]
+                # Use custom color for this class
+                color = self.class_colors.get(cls_id, [255, 255, 255])
 
                 # Track detected classes for warnings
                 if label in ['person', 'car', 'truck', 'bus', 'stop sign',
-                             'traffic light', 'bicycle', 'motorcycle']:
+                            'traffic light', 'bicycle', 'motorcycle']:
                     detected_classes.add(label)
 
                 # Draw bounding box
@@ -179,17 +223,36 @@ class DetectionClient:
 
                 # Draw label with confidence
                 text = f"{label}: {conf:.2f}"
-                processed_img = cv2.putText(processed_img, text, (x, y - 10),
-                                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+                # Add black background for text
+                text_size = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
+                cv2.rectangle(processed_img, (x, y - 25), (x + text_size[0], y), color, -1)
+                processed_img = cv2.putText(processed_img, text, (x, y - 8),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
 
             # Add warnings based on detections
             processed_img = self._add_warnings(processed_img, boxes, confidences, class_ids, detected_classes)
 
             # Add FPS info
-            processed_img = cv2.putText(processed_img, f"YOLOv8 Detection: {avg_fps:.1f} FPS",
-                                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
-                                     0.7, (0, 255, 0), 2)
+            cv2.rectangle(processed_img, (5, 5), (250, 40), (0, 0, 0), -1)  # Black background
+            processed_img = cv2.putText(processed_img, f"Driving Detection: {avg_fps:.1f} FPS",
+                                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                                    0.7, (0, 255, 0), 2)
+                # Add risk level assessment
+            # Get image dimensions
+            height, width = processed_img.shape[:2]
+            risk_level = self._calculate_traffic_risk(boxes, class_ids, confidences)
+            if risk_level == "HIGH":
+                risk_color = (0, 0, 255)  # Red for high risk
+            elif risk_level == "MEDIUM":
+                risk_color = (0, 165, 255)  # Orange for medium risk
+            else:
+                risk_color = (0, 255, 0)  # Green for low risk
 
+            # Create risk level indicator
+            cv2.rectangle(processed_img, (width - 200, 5), (width - 5, 40), (0, 0, 0), -1)  # Black background
+            processed_img = cv2.putText(processed_img, f"Traffic Risk: {risk_level}",
+                                    (width - 190, 30), cv2.FONT_HERSHEY_SIMPLEX,
+                                    0.7, risk_color, 2)
             # Return processed image and detection results
             indices = np.arange(len(boxes))  # Simple indices for compatibility
             return processed_img, boxes, confidences, class_ids, indices
@@ -421,3 +484,101 @@ class DetectionClient:
             self.socket.close()
             self.socket = None
             self.connected = False
+
+    def _calculate_traffic_risk(self, boxes, class_ids, confidences):
+        """Calculate traffic risk based on detected objects and their positions"""
+        if not boxes:
+            return "LOW"
+
+        # Get image dimensions
+        height, width = 600, 800
+
+        # Critical class indicators - presence immediately raises risk level
+        critical_classes = {'person', 'stop sign'}
+        high_risk_classes = {'traffic light', 'motorcycle', 'bicycle'}
+
+        # Initialize counters and metrics
+        risk_score = 0
+        max_single_risk = 0
+        critical_count = 0
+        high_risk_count = 0
+        vehicle_count = 0
+        central_hazard = False
+
+        # Analyze each detection
+        for i, box in enumerate(boxes):
+            if i >= len(confidences) or i >= len(class_ids):
+                continue
+
+            x, y, w, h = box
+            cls_id = class_ids[i]
+            conf = confidences[i]
+
+            # Skip irrelevant classes or low confidence
+            if cls_id not in self.driving_relevant_classes or conf < 0.25:
+                continue
+
+            label = self.labels[cls_id] if cls_id < len(self.labels) else "unknown"
+
+            # Count by category
+            if label in critical_classes:
+                critical_count += 1
+            elif label in high_risk_classes:
+                high_risk_count += 1
+            elif label in ['car', 'truck', 'bus']:
+                vehicle_count += 1
+
+            # Calculate position metrics
+            box_area = w * h
+            image_area = height * width
+            size_ratio = box_area / image_area
+
+            center_x = x + w/2
+            center_y = y + h/2
+            center_ratio_x = center_x / width  # 0 to 1 from left to right
+            center_ratio_y = center_y / height  # 0 to 1 from top to bottom
+
+            # Check for central hazards with substantial size
+            in_center = (0.3 < center_ratio_x < 0.7)
+            is_close = (center_ratio_y > 0.6)
+            is_substantial = (size_ratio > 0.02)  # Object occupies at least 2% of frame
+
+            if in_center and is_close and is_substantial and label in ['person', 'car', 'truck', 'motorcycle']:
+                central_hazard = True
+
+            # Base risk by object type (more aggressive values)
+            base_risk = {
+                'person': 1.0,      # Highest risk
+                'stop sign': 0.9,   # Very important
+                'traffic light': 0.8,
+                'car': 0.6,
+                'truck': 0.7,
+                'bus': 0.7,
+                'motorcycle': 0.8,
+                'bicycle': 0.8,
+            }.get(label, 0.2)
+
+            # Add position factors (simplified)
+            position_factor = 1.0
+            if in_center:
+                position_factor = 1.5  # Higher weight for central objects
+            if is_close:
+                position_factor *= 1.5  # Higher weight for close objects
+
+            # Calculate object risk score
+            object_risk = base_risk * position_factor * conf
+
+            # Track highest single object risk
+            max_single_risk = max(max_single_risk, object_risk)
+
+            # Add to total risk score
+            risk_score += object_risk
+
+        # Rule-based decision
+        if central_hazard or critical_count >= 1 or max_single_risk > 0.8:
+            return "HIGH"
+        elif (high_risk_count >= 1 or vehicle_count >= 2 or max_single_risk > 0.5 or
+            risk_score > 1.0):  # Reduced threshold
+            return "MEDIUM"
+        else:
+            return "LOW"

@@ -328,9 +328,45 @@ class ResultsReporter:
             avg_confidence = summary.get('avg_confidence', 0)
             total_warnings = summary.get('total_warnings', 0)
 
+            # Extract class-specific metrics
+            class_precision = summary.get('class_precision', {})
+            if isinstance(class_precision, str):
+                try:
+                    class_precision = json.loads(class_precision)
+                except:
+                    class_precision = {}
+
+            # Focus on key traffic classes
+            traffic_sign_precision = 0
+            car_precision = 0
+
+            # Traffic signs (class 11 is stop sign)
+            if '11' in class_precision:
+                traffic_sign_precision = class_precision['11']
+
+            # Cars (class 2)
+            if '2' in class_precision:
+                car_precision = class_precision['2']
+
+            # Calculate average for traffic-related objects
+            traffic_related_precision = 0
+            traffic_related_count = 0
+
+            for cls, precision in class_precision.items():
+                if cls in ['0', '2', '3', '5', '7', '9', '11']:  # Driving-relevant classes
+                    traffic_related_precision += precision
+                    traffic_related_count += 1
+
+            if traffic_related_count > 0:
+                traffic_related_precision = traffic_related_precision / traffic_related_count
+            else:
+                traffic_related_precision = 0
+
             # Validação de desempenho em tempo real
             real_time_performance = avg_fps > 10  # Considera tempo real se > 10 FPS
             high_confidence = avg_confidence > 0.7  # Bom nível de confiança
+            good_traffic_sign_detection = traffic_sign_precision > 0.8  # Boa detecção de placas
+            good_car_detection = car_precision > 0.8  # Boa detecção de carros
 
             html += """
             <h3>Critérios de Validação</h3>
@@ -346,11 +382,12 @@ class ResultsReporter:
             criteria = [
                 ('Processamento em tempo real', '>10 FPS', f"{avg_fps:.2f} FPS", real_time_performance),
                 ('Confiança de detecção', '>0.7', f"{avg_confidence:.2f}", high_confidence),
+                ('Detecção de placas de trânsito', '>0.8', f"{traffic_sign_precision:.2f}", good_traffic_sign_detection),
+                ('Detecção de veículos', '>0.8', f"{car_precision:.2f}", good_car_detection),
                 ('Feedback gerado', 'Sim', 'Sim' if total_warnings > 0 else 'Não', total_warnings > 0)
             ]
 
             for criterion, target, actual, passed in criteria:
-                # Substitui símbolos Unicode por entidades HTML
                 status = "APROVADO" if passed else "REPROVADO"
                 html += f"""
                 <tr>
@@ -360,7 +397,6 @@ class ResultsReporter:
                     <td>{status}</td>
                 </tr>
                 """
-
             html += """
             </table>
 

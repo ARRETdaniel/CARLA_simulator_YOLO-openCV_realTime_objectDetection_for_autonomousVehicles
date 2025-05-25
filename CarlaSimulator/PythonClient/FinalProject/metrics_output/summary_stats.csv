@@ -1,15 +1,15 @@
-avg_detection_time,0.08937532381318351
-max_detection_time,0.3163282871246338
-min_detection_time,0.03798246383666992
-avg_fps,11.188770650948877
-total_detections,1127
-avg_detections_per_frame,0.6135002721829069
-detection_classes_distribution,{"2": 850, "13": 52, "3": 1, "4": 2, "11": 130, "7": 11, "8": 3, "37": 6, "29": 30, "33": 32, "9": 2, "6": 8}
-avg_confidence,0.6484046012315214
-total_warnings,1127
-warning_types_distribution,{"car": 850, "bench": 52, "motorcycle": 1, "airplane": 2, "stop sign": 130, "truck": 11, "boat": 3, "surfboard": 6, "frisbee": 30, "kite": 32, "traffic light": 2, "train": 8}
-warning_severities,{"HIGH": 130, "MEDIUM": 861, "LOW": 136}
-total_runtime_seconds,623.493423
-class_precision,{"33": 1.0, "2": 1.0, "3": 1.0, "4": 1.0, "37": 1.0, "6": 1.0, "7": 1.0, "8": 1.0, "9": 1.0, "11": 1.0, "13": 1.0, "29": 1.0}
-class_avg_confidence,{"2": 0.6813114929199219, "13": 0.4713100458566959, "3": 0.7835947871208191, "4": 0.7830938994884491, "11": 0.662197605233926, "7": 0.3626210499893535, "8": 0.5435543060302734, "37": 0.42400500178337097, "29": 0.6223082095384598, "33": 0.44218223448842764, "9": 0.37212100625038147, "6": 0.5140644684433937}
+avg_detection_time,0.09405577033514813
+max_detection_time,0.2639913558959961
+min_detection_time,0.04158592224121094
+avg_fps,10.631989897448168
+total_detections,1043
+avg_detections_per_frame,0.5677735438214481
+detection_classes_distribution,{"2": 851, "13": 52, "3": 1, "11": 129, "7": 8, "9": 2}
+avg_confidence,0.665943135236848
+total_warnings,1043
+warning_types_distribution,{"car": 851, "bench": 52, "motorcycle": 1, "stop sign": 129, "truck": 8, "traffic light": 2}
+warning_severities,{"HIGH": 129, "MEDIUM": 859, "LOW": 55}
+total_runtime_seconds,714.525435
+class_precision,{"2": 1.0, "3": 1.0, "7": 1.0, "9": 1.0, "11": 1.0, "13": 1.0}
+class_avg_confidence,{"2": 0.6822825076297083, "13": 0.4710882483766629, "3": 0.7835947871208191, "11": 0.6616335261699765, "7": 0.32264165207743645, "9": 0.37211713194847107}
 distance_detection_rates,{"pr\u00f3ximo": 1.0, "m\u00e9dio": 1.0, "distante": 1.0}
