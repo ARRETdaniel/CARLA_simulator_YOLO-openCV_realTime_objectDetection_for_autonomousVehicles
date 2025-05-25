@@ -369,16 +369,16 @@ class DetectionClient:
 
         # Choose sound based on warning type
         if warning_type == 'person':
-            sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Exclamation.wav').PlaySync();"
+            sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Exclamation.wav').Play();"
         elif warning_type == 'stop sign':
-            sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Critical Stop.wav').PlaySync();"
+            sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Critical Stop.wav').Play();"
         else:
-            sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Notify.wav').PlaySync();"
+            sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Notify.wav').Play();"
 
-        # Create and start thread
+        # Create and start thread with better error handling
         try:
             self.audio_thread = threading.Thread(
-                target=lambda: subprocess.run(sound_command, shell=True, timeout=2))
+                target=lambda: subprocess.run(sound_command, shell=True, timeout=5))
             self.audio_thread.daemon = True
             self.audio_thread.start()
         except Exception as e:

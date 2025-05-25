@@ -1,15 +1,15 @@
-avg_detection_time,0.21010062904233653
-max_detection_time,0.3912842273712158
-min_detection_time,0.18528032302856445
-avg_fps,4.759624017110839
-total_detections,270
-avg_detections_per_frame,0.8794788273615635
-detection_classes_distribution,{"2": 212, "0": 7, "7": 5, "13": 12, "11": 22, "29": 6, "9": 6}
-avg_confidence,0.753671164960704
-total_warnings,1302
-warning_types_distribution,{"car": 996, "person": 36, "truck": 30, "bench": 72, "stop sign": 132, "traffic light": 36}
-warning_severities,{"HIGH": 6, "MEDIUM": 42, "LOW": 1254}
-total_runtime_seconds,460.712568
-class_precision,{"0": 1.0, "2": 1.0, "7": 1.0, "9": 1.0, "11": 1.0, "13": 1.0, "29": 1.0}
-class_avg_confidence,{"2": 0.7621291406312078, "0": 0.6032730340957642, "7": 0.6904464840888977, "13": 0.6686697204907736, "11": 0.7909164862199263, "29": 0.8527440826098124, "9": 0.5805458823839823}
+avg_detection_time,0.0887880222785713
+max_detection_time,0.2742950916290283
+min_detection_time,0.04115748405456543
+avg_fps,11.262780432956516
+total_detections,1124
+avg_detections_per_frame,0.6118671747414263
+detection_classes_distribution,{"2": 850, "13": 52, "3": 1, "4": 2, "11": 130, "7": 8, "8": 3, "37": 6, "29": 30, "33": 32, "9": 2, "6": 8}
+avg_confidence,0.6503466339476529
+total_warnings,1124
+warning_types_distribution,{"car": 850, "bench": 52, "motorcycle": 1, "airplane": 2, "stop sign": 130, "truck": 8, "boat": 3, "surfboard": 6, "frisbee": 30, "kite": 32, "traffic light": 2, "train": 8}
+warning_severities,{"HIGH": 130, "MEDIUM": 858, "LOW": 136}
+total_runtime_seconds,660.760116
+class_precision,{"33": 1.0, "2": 1.0, "3": 1.0, "4": 1.0, "37": 1.0, "6": 1.0, "7": 1.0, "8": 1.0, "9": 1.0, "11": 1.0, "13": 1.0, "29": 1.0}
+class_avg_confidence,{"2": 0.6823933180991341, "13": 0.47116761196118134, "3": 0.7835871577262878, "4": 0.7832933664321899, "11": 0.6621882564746416, "7": 0.32261229678988457, "8": 0.5500423113505045, "37": 0.4238335092862447, "29": 0.6322276254494985, "33": 0.4421799434348941, "9": 0.37211713194847107, "6": 0.5140645727515221}
 distance_detection_rates,{"pr\u00f3ximo": 1.0, "m\u00e9dio": 1.0, "distante": 1.0}

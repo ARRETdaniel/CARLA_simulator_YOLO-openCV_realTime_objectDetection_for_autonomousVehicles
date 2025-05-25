@@ -1110,7 +1110,49 @@ def exec_waypoint_nav_demo(args):
             #width = on_car_camera.width
 
             try:
+                # Record detection start time
+                detection_start = time.time()
+
+                # Call the detector
                 frame_obj_to_detect, boxes, confidences, classids, idxs = yolo_detector.detect_objects(frame_obj_to_detect)
+
+                # Calculate detection time
+                detection_time = time.time() - detection_start
+
+                # Record metrics - this is the key line you're missing
+                metrics.record_detection_metrics(detection_time, boxes, confidences, classids, idxs)
+
+                # If any traffic signs were detected, record warning metrics
+                warning_data = {
+                    'count': 0,
+                    'types': {},
+                    'severities': {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+                }
+
+                if idxs is not None:
+                    # Count warnings by type
+                    for i in idxs:
+                        class_id = classids[i]
+                        class_name = labels[class_id] if class_id < len(labels) else f"unknown-{class_id}"
+
+                        if class_name in warning_data['types']:
+                            warning_data['types'][class_name] += 1
+                        else:
+                            warning_data['types'][class_name] = 1
+
+                        warning_data['count'] += 1
+
+                        # Assign severity based on object type
+                        if class_name in ['stop sign', 'person']:
+                            warning_data['severities']['HIGH'] += 1
+                        elif class_name in ['car', 'truck', 'bus']:
+                            warning_data['severities']['MEDIUM'] += 1
+                        else:
+                            warning_data['severities']['LOW'] += 1
+
+                    # Record warning metrics
+                    metrics.record_warning_metrics(warning_data)
+
             except Exception as e:
                 print(f"Detection failed: {e}")
                 # Fall back to previous frame or empty results
