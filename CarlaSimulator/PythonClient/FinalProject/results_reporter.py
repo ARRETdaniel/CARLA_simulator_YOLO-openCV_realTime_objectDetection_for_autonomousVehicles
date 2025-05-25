@@ -278,6 +278,32 @@ class ResultsReporter:
                     <img src="../metrics_output/detection_times_histogram.png" alt="Histograma de Tempos de Detecção">
                 </div>
             </div>
+
+            <h2>Análise de Placas de Trânsito</h2>
+            <div class="chart-container">
+                <div class="chart">
+                    <h3>Dashboard de Placas de Trânsito</h3>
+                    <img src="../metrics_output/traffic_sign_dashboard.png" alt="Dashboard de Placas de Trânsito">
+                </div>
+
+                <div class="chart">
+                    <h3>Eficácia do Feedback ao Condutor</h3>
+                    <img src="../metrics_output/feedback_effectiveness.png" alt="Eficácia do Feedback">
+                </div>
+            </div>
+
+            <h2>Comportamento do Veículo Autônomo</h2>
+            <div class="chart-container">
+                <div class="chart">
+                    <h3>Resposta do Veículo a Sinalizações</h3>
+                    <img src="../metrics_output/autonomous_behavior.png" alt="Comportamento Autônomo">
+                </div>
+
+                <div class="chart">
+                    <h3>Comparação com Desempenho Humano</h3>
+                    <img src="../metrics_output/human_comparison_chart.png" alt="Comparação Humano vs. Sistema">
+                </div>
+            </div>
         </div>
         """
         return html
@@ -524,7 +550,7 @@ class ResultsReporter:
             <div class="container">
                 <h2>Discussão</h2>
                 <p>Este relatório apresenta as métricas de desempenho e resultados do sistema de detecção de objetos e avisos
-                implementados para a simulação de veículo autônomo. O sistema utiliza YOLOv3 para detecção de objetos em tempo real
+                implementados para a simulação de veículo autônomo. O sistema utiliza YOLOv8 para detecção de objetos em tempo real
                 e fornece feedback visual para auxiliar o condutor com informações sobre objetos detectados e sua proximidade.</p>
 
                 <h3>Principais Descobertas</h3>

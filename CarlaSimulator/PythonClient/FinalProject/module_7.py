@@ -181,6 +181,12 @@ INTERP_DISTANCE_RES       = 0.01 # distance between interpolated points
 CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
                            '/controller_output/'
 # CAMERAS
+#720p
+#WINDOW_WIDTH = 1280
+#WINDOW_HEIGHT = 720
+# Half HD
+#WINDOW_WIDTH = 960
+#WINDOW_HEIGHT = 540
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
 MINI_WINDOW_WIDTH = 320
