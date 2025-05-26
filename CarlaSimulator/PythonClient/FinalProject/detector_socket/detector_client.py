@@ -9,6 +9,8 @@ import colorsys
 from collections import deque
 import threading
 import subprocess
+import os
+import sys
 m.patch()  # Enable numpy array serialization
 
 # Global warning timers with persistence
@@ -127,33 +129,54 @@ class DetectionClient:
                 WARNING_OVERLAYS[(num_warnings, width)] = overlay
 
     def connect(self):
-        """Connect to the detection server"""
+        """Connect to the detection server with retries"""
         attempts = 0
-        while attempts < self.reconnect_attempts:
+        max_attempts = self.reconnect_attempts
+        retry_delay = 2  # seconds between retries
+
+        while attempts < max_attempts:
             try:
+                print(f"Attempting to connect to detection server ({attempts+1}/{max_attempts})...")
                 self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.socket.settimeout(5)  # 5 second timeout for connection
                 self.socket.connect((self.host, self.port))
+                self.socket.settimeout(None)  # Reset to blocking mode after connection
                 self.connected = True
                 print(f"Connected to detection server at {self.host}:{self.port}")
-                break
+                return True
             except socket.error as e:
                 attempts += 1
                 print(f"Connection attempt {attempts} failed: {e}")
-                time.sleep(1)
+                if attempts < max_attempts:
+                    print(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                else:
+                    print("Failed to connect to detection server after multiple attempts")
 
-        if not self.connected:
-            print("Failed to connect to detection server")
+        return False
 
     def detect_objects(self, image_array):
-        """Send image to server and get detection results"""
+        """Send image to server and get detection results with compression"""
         if not self.connected:
             self.connect()
             if not self.connected:
                 return image_array, [], [], [], []
 
         try:
-            # Pack image data
-            data = {'image': image_array}
+            # Compress the image before sending
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
+            _, compressed_image = cv2.imencode('.jpg', image_array, encode_param)
+            compressed_data = compressed_image.tobytes()
+
+            # Pack image data with compression flag - fix the structure
+            data = {
+                'image_compressed': compressed_data,
+                'shape': image_array.shape,
+                'vehicle_state': {
+                    'speed': 0,
+                    'near_intersection': False
+                }
+            }
             packed_data = msgpack.packb(data, default=m.encode)
 
             # Send data size followed by data
@@ -237,7 +260,8 @@ class DetectionClient:
             processed_img = cv2.putText(processed_img, f"Driving Detection: {avg_fps:.1f} FPS",
                                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX,
                                     0.7, (0, 255, 0), 2)
-                # Add risk level assessment
+
+            # Add risk level assessment
             # Get image dimensions
             height, width = processed_img.shape[:2]
             risk_level = self._calculate_traffic_risk(boxes, class_ids, confidences)
@@ -253,6 +277,7 @@ class DetectionClient:
             processed_img = cv2.putText(processed_img, f"Traffic Risk: {risk_level}",
                                     (width - 190, 30), cv2.FONT_HERSHEY_SIMPLEX,
                                     0.7, risk_color, 2)
+
             # Return processed image and detection results
             indices = np.arange(len(boxes))  # Simple indices for compatibility
             return processed_img, boxes, confidences, class_ids, indices
@@ -410,7 +435,7 @@ class DetectionClient:
                     y_offset += 45
 
         return img
-
+    # Play audio warning for critical detections
     def _play_audio_warning(self, warning_type):
         """Play audio warning for critical detections"""
         global last_audio_warning
@@ -430,20 +455,42 @@ class DetectionClient:
         if hasattr(self, 'audio_thread') and self.audio_thread and self.audio_thread.is_alive():
             return
 
-        # Choose sound based on warning type
-        if warning_type == 'person':
-            sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Exclamation.wav').Play();"
-        elif warning_type == 'stop sign':
-            sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Critical Stop.wav').Play();"
-        else:
-            sound_command = "powershell -c (New-Object Media.SoundPlayer 'C:\\Windows\\Media\\Windows Notify.wav').Play();"
+        # Path to the warning sound
+        sound_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                "sound_warning", "car_beeping.mp3")
 
-        # Create and start thread with better error handling
+        # Make sure the file exists
+        if not os.path.exists(sound_file):
+            print(f"Warning: Sound file not found: {sound_file}")
+            return
+
         try:
-            self.audio_thread = threading.Thread(
-                target=lambda: subprocess.run(sound_command, shell=True, timeout=5))
-            self.audio_thread.daemon = True
-            self.audio_thread.start()
+            if sys.platform == 'win32':
+                # On Windows, use a different approach for MP3 files
+                import winsound
+                # Use the built-in Windows alert sound as fallback
+                winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
+
+                # Optionally: If you want to play the actual MP3, use this instead
+                # This requires the system's default MP3 player
+                # self.audio_thread = threading.Thread(
+                #     target=lambda: os.startfile(sound_file))
+                # self.audio_thread.daemon = True
+                # self.audio_thread.start()
+
+                print(f"Playing warning sound for {warning_type}")
+            else:
+                # Linux/Mac platforms (requires mpg123 or similar)
+                sound_command = f'mpg123 "{sound_file}" 2>/dev/null || ' \
+                            f'ffplay -nodisp -autoexit -loglevel quiet "{sound_file}" || ' \
+                            f'mplayer -really-quiet "{sound_file}"'
+
+                # Create and start thread
+                self.audio_thread = threading.Thread(
+                    target=lambda: subprocess.run(sound_command, shell=True, timeout=5))
+                self.audio_thread.daemon = True
+                self.audio_thread.start()
+                print(f"Playing warning sound for {warning_type}")
         except Exception as e:
             print(f"Warning: Audio playback error: {e}")
 

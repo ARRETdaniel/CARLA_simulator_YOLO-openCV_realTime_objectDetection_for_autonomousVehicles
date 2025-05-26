@@ -30,7 +30,7 @@ import local_planner
 import behavioural_planner
 import cv2 # image processig
 import colorsys
-
+import atexit
 
 #test show  image console
 from PIL import Image
@@ -54,6 +54,7 @@ from yolo import YOLO, infer_image_optimized
 from performance_metrics import PerformanceMetrics
 from results_reporter import ResultsReporter
 from detector_socket.detector_client import DetectionClient
+from threaded_detector import ThreadedDetector
 
 ## darknet imports
 #from pexpect import popen_spawn
@@ -96,9 +97,7 @@ yolo_detector = YOLO(
 np.random.seed(42)  # For reproducible colors
 # Get the labels from the YOLO detector
 
-# Initialize the detection client
-yolo_detector = DetectionClient(host="localhost", port=5555)
-labels = yolo_detector.labels
+
 
 """
 Configurable params
@@ -187,8 +186,12 @@ CONTROLLER_OUTPUT_FOLDER = os.path.dirname(os.path.realpath(__file__)) +\
 # Half HD
 #WINDOW_WIDTH = 960
 #WINDOW_HEIGHT = 540
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
+#WINDOW_WIDTH = 800
+#WINDOW_HEIGHT = 600
+# YOLO's native input size
+WINDOW_WIDTH = 640
+WINDOW_HEIGHT = 480
+# Mini window size for depth and semantic segmentation cameras
 MINI_WINDOW_WIDTH = 320
 MINI_WINDOW_HEIGHT = 180
 
@@ -573,6 +576,16 @@ def exec_waypoint_nav_demo(args):
         metrics = PerformanceMetrics("metrics_output")
 
         print('Carla client connected.')
+
+        # Initialize the detection client
+        yolo_detector = DetectionClient(host="localhost", port=5555)
+        labels = yolo_detector.labels
+
+        # Initialize the threaded detector wrapper
+        threaded_detector = ThreadedDetector(yolo_detector)
+
+        # Initialize frame counter for FPS display
+        frame_count = 0
 
         settings = make_carla_settings(args)
 
@@ -1115,54 +1128,53 @@ def exec_waypoint_nav_demo(args):
             #height = on_car_camera.height
             #width = on_car_camera.width
 
+            frame_count += 1
+
             try:
-                # Record detection start time
-                detection_start = time.time()
+                # Process the frame with the threaded detector
+                frame_obj_detected, boxes, confidences, classids, idxs = threaded_detector.process_frame(
+                    frame_obj_to_detect,
+                    metrics=metrics
+                )
 
-                # Call the detector
-                frame_obj_to_detect, boxes, confidences, classids, idxs = yolo_detector.detect_objects(frame_obj_to_detect)
+                # Display current FPS
+                detection_fps = threaded_detector.get_fps()
+                if frame_count % 10 == 0:  # Only print every 10 frames to reduce console spam
+                    print(f"Detection FPS: {detection_fps:.1f}")
 
-                # Calculate detection time
-                detection_time = time.time() - detection_start
+                # Convert from RGB to BGR for OpenCV display (if needed)
+                if frame_obj_detected is not None:
+                    try:
+                        # Only convert if needed (check if it's RGB vs BGR)
+                        #if frame_obj_detected.shape[2] == 3:  # 3 channels
+                        if True:  # 3 channels
+                            # Check if already in BGR format
+                           # if np.array_equal(frame_obj_detected[:5, :5, :], cv2.cvtColor(cv2.cvtColor(frame_obj_detected[:5, :5, :], cv2.COLOR_BGR2RGB), cv2.COLOR_RGB2BGR)):
+                            if False:
+                                # Already in BGR format
+                                pass
+                            else:
+                                # Convert from RGB to BGR
+                                frame_obj_detected = cv2.cvtColor(frame_obj_detected, cv2.COLOR_RGB2BGR)
 
-                # Record metrics - this is the key line you're missing
-                metrics.record_detection_metrics(detection_time, boxes, confidences, classids, idxs)
+                        # Display the frame
+                        cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
+                        cv2.waitKey(1)
+                    except Exception as e:
+                        print(f"Warning: Display error: {e}")
 
-                # If any traffic signs were detected, record warning metrics
-                warning_data = {
-                    'count': 0,
-                    'types': {},
-                    'severities': {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
-                }
-
-                if idxs is not None:
-                    # Count warnings by type
-                    for i in idxs:
-                        class_id = classids[i]
-                        class_name = labels[class_id] if class_id < len(labels) else f"unknown-{class_id}"
-
-                        if class_name in warning_data['types']:
-                            warning_data['types'][class_name] += 1
-                        else:
-                            warning_data['types'][class_name] = 1
-
-                        warning_data['count'] += 1
-
-                        # Assign severity based on object type
-                        if class_name in ['stop sign', 'person']:
-                            warning_data['severities']['HIGH'] += 1
-                        elif class_name in ['car', 'truck', 'bus']:
-                            warning_data['severities']['MEDIUM'] += 1
-                        else:
-                            warning_data['severities']['LOW'] += 1
-
-                    # Record warning metrics
-                    metrics.record_warning_metrics(warning_data)
+                # Record risk level from the detector
+                if boxes is not None and len(boxes) > 0:
+                    risk_level = yolo_detector._calculate_traffic_risk(boxes, classids, confidences)
+                    metrics.record_risk_level(risk_level)
 
             except Exception as e:
                 print(f"Detection failed: {e}")
+                import traceback
+                traceback.print_exc()  # Print full stack trace
                 # Fall back to previous frame or empty results
-
+                frame_obj_detected = frame_obj_to_detect
+                boxes, confidences, classids, idxs = [], [], [], []
 
             ''' BEFORE SOCKET
             # Replace your current infer_image call with:
@@ -1191,14 +1203,7 @@ def exec_waypoint_nav_demo(args):
              #                                        classids, idxs, metrics=metrics)
 
             # Convert from RGB to BGR for OpenCV display
-            frame_obj_detected = cv2.cvtColor(frame_obj_to_detect, cv2.COLOR_RGB2BGR)
-
-            # Show the frame with detections and warnings
-            try:
-                cv2.imshow('OUTPUT: OBJECT DETECTION', frame_obj_detected)
-                cv2.waitKey(1)
-            except Exception as e:
-                print(f"Warning: Display error: {e}")
+            # This section is now handled by the threaded detector code above
             #print("\nidexs:",idxs)
             #print("\nconfidences:",confidences)
             #print("\nclassids:",classids)
@@ -1694,9 +1699,14 @@ if __name__ == '__main__':
 
 #  cleanup
 def cleanup():
-    # Other cleanup code...
-    yolo_detector.close()
+    try:
+        if 'threaded_detector' in globals():
+            threaded_detector.shutdown()
+        if 'yolo_detector' in globals():
+            yolo_detector.close()
+        print("Clean shutdown complete")
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
 
 # Register cleanup
-import atexit
 atexit.register(cleanup)

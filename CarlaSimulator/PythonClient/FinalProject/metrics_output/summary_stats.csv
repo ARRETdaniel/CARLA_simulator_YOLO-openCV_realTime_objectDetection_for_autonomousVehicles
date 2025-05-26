@@ -1,15 +1,15 @@
-avg_detection_time,0.09405577033514813
-max_detection_time,0.2639913558959961
-min_detection_time,0.04158592224121094
-avg_fps,10.631989897448168
-total_detections,1043
-avg_detections_per_frame,0.5677735438214481
-detection_classes_distribution,{"2": 851, "13": 52, "3": 1, "11": 129, "7": 8, "9": 2}
-avg_confidence,0.665943135236848
-total_warnings,1043
-warning_types_distribution,{"car": 851, "bench": 52, "motorcycle": 1, "stop sign": 129, "truck": 8, "traffic light": 2}
-warning_severities,{"HIGH": 129, "MEDIUM": 859, "LOW": 55}
-total_runtime_seconds,714.525435
-class_precision,{"2": 1.0, "3": 1.0, "7": 1.0, "9": 1.0, "11": 1.0, "13": 1.0}
-class_avg_confidence,{"2": 0.6822825076297083, "13": 0.4710882483766629, "3": 0.7835947871208191, "11": 0.6616335261699765, "7": 0.32264165207743645, "9": 0.37211713194847107}
+avg_detection_time,0.07443668311209749
+max_detection_time,0.4742155075073242
+min_detection_time,0.0
+avg_fps,13.434236430095305
+total_detections,544
+avg_detections_per_frame,0.37751561415683554
+detection_classes_distribution,{"2": 453, "13": 32, "11": 35, "7": 19, "9": 5}
+avg_confidence,0.6352891734089045
+total_warnings,512
+warning_types_distribution,{"car": 453, "stop sign": 35, "truck": 19, "traffic light": 5}
+warning_severities,{"HIGH": 35, "MEDIUM": 5, "LOW": 472}
+total_runtime_seconds,446.042097
+class_precision,{"2": 1.0, "7": 1.0, "9": 1.0, "11": 1.0, "13": 1.0}
+class_avg_confidence,{"2": 0.6547815832607531, "13": 0.4875262835994363, "11": 0.6937844582966396, "7": 0.3641726468738757, "9": 0.4357351422309875}
 distance_detection_rates,{"pr\u00f3ximo": 1.0, "m\u00e9dio": 1.0, "distante": 1.0}

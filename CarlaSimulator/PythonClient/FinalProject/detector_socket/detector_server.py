@@ -318,22 +318,50 @@ class DetectionServer:
                     # First receive the size of the incoming data
                     data_size_bytes = client_socket.recv(4)
                     if not data_size_bytes:
+                        print("Client disconnected (received empty data)")
                         break
 
-                    # Process data (similar to existing code)
+                    # Process data with more debugging
                     data_size = int.from_bytes(data_size_bytes, byteorder='little')
+                    print(f"Receiving data of size {data_size} bytes")
+
                     received_data = b''
                     while len(received_data) < data_size:
                         chunk = client_socket.recv(min(4096, data_size - len(received_data)))
                         if not chunk:
+                            print("Connection broken during data transfer")
                             break
                         received_data += chunk
 
-                    # Unpack the image data
-                    unpacked_data = msgpack.unpackb(received_data, raw=False, object_hook=m.decode)
-                    image = unpacked_data['image']
-                    vehicle_state = unpacked_data.get('vehicle_state', None)
+                    if len(received_data) < data_size:
+                        print(f"Incomplete data received: {len(received_data)}/{data_size} bytes")
+                        continue
 
+                    # Unpack the data with error handling
+                    try:
+                        unpacked_data = msgpack.unpackb(received_data, raw=False, object_hook=m.decode)
+                    except Exception as e:
+                        print(f"Error unpacking data: {e}")
+                        empty_results = {'boxes': [], 'confidences': [], 'class_ids': [],
+                                        'fps': 0, 'processing_time': 0, 'error': str(e)}
+                        self.send_data(client_socket, empty_results)
+                        continue
+
+                    # Get the image from the unpacked data
+                    if 'image_compressed' in unpacked_data:
+                        # Handle compressed image
+                        image = unpacked_data
+                        vehicle_state = unpacked_data.get('vehicle_state', None)
+                    elif 'image' in unpacked_data:
+                        # Handle uncompressed image
+                        image = unpacked_data['image']
+                        vehicle_state = unpacked_data.get('vehicle_state', None)
+                    else:
+                        print(f"No image data found in received message. Keys: {unpacked_data.keys()}")
+                        empty_results = {'boxes': [], 'confidences': [], 'class_ids': [],
+                                        'fps': 0, 'processing_time': 0, 'error': "No image data"}
+                        self.send_data(client_socket, empty_results)
+                        continue
                     current_time = time.time()
                     time_since_last_frame = current_time - last_frame_time
 
@@ -559,6 +587,37 @@ class DetectionServer:
         """Process the image with domain-specific filtering"""
         # Start timing
         start_time = time.time()
+
+        original_vehicle_state = vehicle_state  # Store original vehicle state
+
+        # Check if the image is compressed
+        if isinstance(image_data, dict) and 'image_compressed' in image_data:
+            # Decompress the image
+            compressed_data = image_data['image_compressed']
+            shape = image_data['shape']
+
+            # Save vehicle state if present in the dict
+            if 'vehicle_state' in image_data:
+                vehicle_state = image_data['vehicle_state']
+
+            # Convert compressed bytes to numpy array
+            np_arr = np.frombuffer(compressed_data, np.uint8)
+
+            # Decode the JPEG image
+            image_data = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+            # Make sure the shape is correct
+            if image_data.shape != tuple(shape):
+                # Resize if needed
+                image_data = cv2.resize(image_data, (shape[1], shape[0]))
+        elif isinstance(image_data, dict) and 'image' in image_data:
+            # Handle the case where we get {'image': ...} format
+            if 'vehicle_state' in image_data:
+                vehicle_state = image_data['vehicle_state']
+            image_data = image_data['image']
+
+        # Now image_data is always a numpy array, and vehicle_state is either
+        # the passed parameter, extracted from dict, or None
 
         # Add frame counter for handling initial frames differently
         self.frame_counter = getattr(self, 'frame_counter', 0) + 1

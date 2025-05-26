@@ -283,6 +283,24 @@ class PerformanceMetrics:
                             warnings_data['severities'].get('MEDIUM', 0),
                             warnings_data['severities'].get('LOW', 0)])
 
+    def record_risk_level(self, risk_level):
+        """Record the risk level assessment"""
+        timestamp = (datetime.now() - self.init_time).total_seconds()
+
+        # Track risk level distribution
+        if not hasattr(self, 'risk_levels'):
+            self.risk_levels = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+
+        self.risk_levels[risk_level] = self.risk_levels.get(risk_level, 0) + 1
+
+        # Add to summary statistics
+        if not hasattr(self, 'risk_level_timestamps'):
+            self.risk_level_timestamps = []
+            self.risk_level_values = []
+
+        self.risk_level_timestamps.append(timestamp)
+        self.risk_level_values.append(risk_level)
+
     def generate_summary(self):
         """Generate and save summary statistics from the collected metrics.
 
@@ -321,15 +339,19 @@ class PerformanceMetrics:
                     f.write(f"{key},{value}\n")
 
         return summary
-
+    #here
     def visualize_metrics(self):
         """Generate and save visualizations of the performance metrics."""
         if not self.timestamps:
             print("No data to visualize")
             return
 
-        # Create figure with subplots
-        fig, axs = plt.subplots(3, 2, figsize=(15, 15))
+        # Create figure with subplots - ensure proper initialization
+        fig, axs = plt.subplots(3, 2, figsize=(15, 15), constrained_layout=True)
+
+        # Ensure axes are in correct 2D array form even with single row/column
+        if len(axs.shape) == 1:
+            axs = axs.reshape(1, -1)
 
         # 1. Detection Time Over Time
         axs[0, 0].plot(self.timestamps, self.detection_times)
@@ -347,55 +369,36 @@ class PerformanceMetrics:
 
         # 3. Class Distribution Pie Chart
         if self.detection_classes:
-            # Group non-driving classes as "Others"
-            driving_classes = [0, 1, 2, 3, 5, 7, 9, 11]
-            grouped_classes = {}
+            # Get class distribution data
+            labels = []
+            sizes = []
+            colors = []
 
-            for cls_id, count in self.detection_classes.items():
-                if cls_id in driving_classes:
-                    grouped_classes[cls_id] = count
-                else:
-                    if "Outros" in grouped_classes:
-                        grouped_classes["Outros"] += count
-                    else:
-                        grouped_classes["Outros"] = count
+            # Generate colors
+            cmap = plt.cm.get_cmap('tab20')
 
-            labels = [self._get_class_name(cls) if cls != "Outros" else "Outros Objetos"
-                    for cls in grouped_classes.keys()]
-            sizes = list(grouped_classes.values())
+            # Process class data
+            for i, (cls_id, count) in enumerate(self.detection_classes.items()):
+                cls_name = self._get_class_name(cls_id)
+                labels.append(f"{cls_name}: {count}")
+                sizes.append(count)
+                colors.append(cmap(i % 20))
 
-            # Sort by size (descending) for better visualization, except keep "Others" at the end
-            if "Outros" in grouped_classes:
-                others_value = grouped_classes["Outros"]
-                others_label = "Outros Objetos"
-
-                # Remove "Others" category
-                non_others_labels = [l for l in labels if l != "Outros Objetos"]
-                non_others_sizes = [s for i, s in enumerate(sizes) if labels[i] != "Outros Objetos"]
-
-                # Sort non-others categories
-                sorted_indices = np.argsort(non_others_sizes)[::-1]
-                sorted_labels = [non_others_labels[i] for i in sorted_indices]
-                sorted_sizes = [non_others_sizes[i] for i in sorted_indices]
-
-                # Add "Others" back at the end
-                labels = sorted_labels + [others_label]
-                sizes = sorted_sizes + [others_value]
-            else:
-                # Sort all categories
-                sorted_indices = np.argsort(sizes)[::-1]
-                labels = [labels[i] for i in sorted_indices]
-                sizes = [sizes[i] for i in sorted_indices]
-
-            # Use a custom colormap for better visibility
-            colors = plt.cm.tab20(np.linspace(0, 1, len(labels)))
-
-            axs[1, 0].pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
+            # Only create pie chart if we have data
+            if sizes:
+                axs[1, 0].pie(sizes, labels=labels, autopct='%1.1f%%', colors=colors, startangle=90)
+                axs[1, 0].set_title('Distribuição de Classes de Objetos')
+        else:
+            # If no detection classes, show placeholder text
+            axs[1, 0].text(0.5, 0.5, 'Dados insuficientes para distribuição de classes',
+                        horizontalalignment='center',
+                        verticalalignment='center',
+                        transform=axs[1, 0].transAxes)
             axs[1, 0].set_title('Distribuição de Classes de Objetos')
 
         # 4. Average Confidence Over Time
         if self.confidence_scores:
-            # Garantir que temos o mesmo número de timestamps e scores
+            # Ensure consistent number of timestamps and scores
             min_len = min(len(self.timestamps), len(self.confidence_scores))
             axs[1, 1].plot(self.timestamps[:min_len], self.confidence_scores[:min_len])
             axs[1, 1].set_title('Confiança Média vs Tempo')
@@ -405,15 +408,13 @@ class PerformanceMetrics:
 
         # 5. Warnings Over Time
         if self.warnings_generated:
-            # Criar timestamps específicos para warnings se necessário
+            # Create timestamps for warnings if needed
             if len(self.timestamps) >= len(self.warnings_generated):
-                # Usar os timestamps existentes
                 warning_timestamps = self.timestamps[:len(self.warnings_generated)]
             else:
-                # Criar timestamps interpolados para warnings
                 warning_timestamps = np.linspace(
-                    self.timestamps[0],
-                    self.timestamps[-1],
+                    self.timestamps[0] if self.timestamps else 0,
+                    self.timestamps[-1] if self.timestamps else 1,
                     len(self.warnings_generated)
                 )
 
@@ -437,9 +438,19 @@ class PerformanceMetrics:
             axs[2, 1].set_xlabel('Severidade')
             axs[2, 1].set_ylabel('Contagem')
 
-        plt.tight_layout()
-        plt.savefig(os.path.join(self.output_dir, 'performance_metrics.png'))
-        plt.close()
+        # Make sure all subplots have content even if data is missing
+        for i in range(3):
+            for j in range(2):
+                if not axs[i, j].has_data():
+                    axs[i, j].text(0.5, 0.5, 'Dados insuficientes',
+                                horizontalalignment='center',
+                                verticalalignment='center',
+                                transform=axs[i, j].transAxes)
+                    axs[i, j].set_title(f'Gráfico {i*2+j+1}')
+
+        # Save figure with proper layout
+        plt.savefig(os.path.join(self.output_dir, 'performance_metrics.png'), dpi=150, bbox_inches='tight')
+        plt.close(fig)
 
         # Create a histogram of detection times
         plt.figure(figsize=(10, 6))
@@ -450,6 +461,26 @@ class PerformanceMetrics:
         plt.grid(True)
         plt.savefig(os.path.join(self.output_dir, 'detection_times_histogram.png'))
         plt.close()
+
+
+        if hasattr(self, 'risk_level_values') and self.risk_level_values:
+            plt.figure(figsize=(10, 6))
+
+            # Count occurrences of each risk level
+            risk_counts = {'LOW': 0, 'MEDIUM': 0, 'HIGH': 0}
+            for risk in self.risk_level_values:
+                if risk in risk_counts:
+                    risk_counts[risk] += 1
+
+            # Plot as pie chart
+            labels = ['Baixo', 'Médio', 'Alto']
+            sizes = [risk_counts['LOW'], risk_counts['MEDIUM'], risk_counts['HIGH']]
+            colors = ['green', 'orange', 'red']
+
+            plt.pie(sizes, labels=labels, colors=colors, autopct='%1.1f%%', startangle=90)
+            plt.title('Distribuição de Níveis de Risco')
+            plt.savefig(os.path.join(self.output_dir, 'risk_level_distribution.png'))
+            plt.close()
 
         # NEW: Class precision chart
         if self.class_true_positives:
@@ -564,12 +595,6 @@ class PerformanceMetrics:
         try:
             self.generate_autonomous_behavior_chart()
             print("Generated autonomous behavior chart")
-        except Exception as e:
-            print(f"Error generating autonomous behavior chart: {e}")
-
-        try:
-            self.generate_human_comparison_chart()
-            print("Generated human comparison chart")
         except Exception as e:
             print(f"Error generating human comparison chart: {e}")
         plt.close()
@@ -977,7 +1002,6 @@ class PerformanceMetrics:
         plt.ylabel('Pontuação (0-100)')
         plt.ylim(0, 100)
         plt.legend()
-
         plt.tight_layout()
         plt.savefig(os.path.join(self.output_dir, 'human_comparison_chart.png'))
         plt.close()

@@ -70,4 +70,9 @@
             padding: 15px;
             margin: 20px 0;
         }
+        .chart-description {
+            font-size: 14px;
+            color: #555;
+            margin-top: 10px;
+        }
         
