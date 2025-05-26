@@ -597,6 +597,12 @@ class PerformanceMetrics:
             print("Generated autonomous behavior chart")
         except Exception as e:
             print(f"Error generating human comparison chart: {e}")
+
+        try:
+            self.generate_additional_metrics_charts()
+            print("Generated additional metrics charts")
+        except Exception as e:
+            print(f"Error generating additional metrics charts: {e}")
         plt.close()
 
     def _get_class_name(self, class_id):
@@ -1005,3 +1011,161 @@ class PerformanceMetrics:
         plt.tight_layout()
         plt.savefig(os.path.join(self.output_dir, 'human_comparison_chart.png'))
         plt.close()
+
+    def generate_additional_metrics_charts(self):
+        """Generate additional visualization charts for specialized metrics."""
+        import numpy as np
+        import matplotlib.pyplot as plt
+
+        # Create figure with multiple plots
+        fig, axes = plt.subplots(3, 1, figsize=(12, 15), constrained_layout=True)
+
+        # 1. Traffic sign confidence over time
+        ax1 = axes[0]
+
+        # Extract traffic sign confidence data (class ID 11)
+        traffic_sign_confidences = []
+        traffic_sign_timestamps = []
+
+        # Filter class_confidence_by_id for traffic signs (class 11)
+        if 11 in self.class_confidence_by_id and self.class_confidence_by_id[11]:
+            # Get the timestamps for frames with traffic sign detections
+            # We need to match timestamps with detection indices
+            for i, cls_data in enumerate(self.class_confidence_by_id[11]):
+                # Use detection time as timestamp if available
+                # This is an approximation since we don't store exact timestamps per detection
+                if i < len(self.timestamps):
+                    traffic_sign_timestamps.append(self.timestamps[i])
+                    traffic_sign_confidences.append(cls_data)
+
+        # Plot traffic sign confidence over time
+        if traffic_sign_timestamps and traffic_sign_confidences:
+            ax1.plot(traffic_sign_timestamps, traffic_sign_confidences, 'r-', linewidth=2)
+            ax1.set_title('Confiança de Detecção de Placas de Trânsito vs Tempo', fontsize=14)
+            ax1.set_xlabel('Tempo (s)')
+            ax1.set_ylabel('Confiança')
+            ax1.set_ylim(0, 1.0)
+            ax1.grid(True)
+        else:
+            ax1.text(0.5, 0.5, 'Dados insuficientes para placas de trânsito',
+                     horizontalalignment='center', verticalalignment='center',
+                     transform=ax1.transAxes)
+            ax1.set_title('Confiança de Detecção de Placas de Trânsito vs Tempo', fontsize=14)
+
+        # 2. FPS over time
+        ax2 = axes[1]
+
+        # Calculate FPS from detection times
+        fps_values = []
+        for dt in self.detection_times:
+            if dt > 0:
+                fps_values.append(1.0 / dt)
+            else:
+                fps_values.append(0)
+
+        # Ensure consistent number of timestamps and FPS values
+        min_len = min(len(self.timestamps), len(fps_values))
+
+        if min_len > 0:
+            # Apply rolling average to smooth FPS values
+            window_size = min(30, min_len)
+            smoothed_fps = np.convolve(fps_values[:min_len],
+                                   np.ones(window_size)/window_size,
+                                   mode='valid')
+
+            # Plot both raw and smoothed FPS
+            ax2.plot(self.timestamps[:min_len], fps_values[:min_len], 'b-', alpha=0.3, label='FPS Instantâneo')
+
+            # Plot smoothed FPS values with adjusted timestamps
+            if len(smoothed_fps) > 0:
+                smoothed_timestamps = self.timestamps[window_size-1:min_len]
+                ax2.plot(smoothed_timestamps, smoothed_fps, 'r-', linewidth=2, label='FPS Médio (Janela deslizante)')
+
+            ax2.set_title('Frames Por Segundo (FPS) vs Tempo', fontsize=14)
+            ax2.set_xlabel('Tempo (s)')
+            ax2.set_ylabel('FPS')
+            ax2.legend()
+            ax2.grid(True)
+        else:
+            ax2.text(0.5, 0.5, 'Dados insuficientes para FPS',
+                     horizontalalignment='center', verticalalignment='center',
+                     transform=ax2.transAxes)
+            ax2.set_title('Frames Por Segundo (FPS) vs Tempo', fontsize=14)
+
+        # 3. Warnings over time with severity breakdown
+        ax3 = axes[2]
+
+        # Create timestamps for warnings if needed
+        if self.warnings_generated:
+            if len(self.timestamps) >= len(self.warnings_generated):
+                warning_timestamps = self.timestamps[:len(self.warnings_generated)]
+            else:
+                warning_timestamps = np.linspace(
+                    self.timestamps[0] if self.timestamps else 0,
+                    self.timestamps[-1] if self.timestamps else 1,
+                    len(self.warnings_generated)
+                )
+
+            # Plot warnings over time with stacked breakdown of severity
+            high_severity = []
+            medium_severity = []
+            low_severity = []
+
+            # Create the stacked warning counts
+            try:
+                with open(self.warning_log_file, 'r', encoding='latin-1') as f:
+                    reader = csv.DictReader(f)
+                    for row in reader:
+                        high_severity.append(int(row.get('high_severity', 0)))
+                        medium_severity.append(int(row.get('medium_severity', 0)))
+                        low_severity.append(int(row.get('low_severity', 0)))
+            except Exception as e:
+                print(f"Error reading warning severities: {e}")
+                # Fallback if data can't be read
+                high_severity = [0] * len(warning_timestamps)
+                medium_severity = [0] * len(warning_timestamps)
+                low_severity = [0] * len(warning_timestamps)
+
+            # Ensure arrays are same length
+            min_warnings = min(len(warning_timestamps), len(high_severity),
+                              len(medium_severity), len(low_severity))
+
+            if min_warnings > 0:
+                # Create stacked area plot for warnings by severity
+                ax3.stackplot(warning_timestamps[:min_warnings],
+                            [high_severity[:min_warnings],
+                             medium_severity[:min_warnings],
+                             low_severity[:min_warnings]],
+                            labels=['Alta', 'Média', 'Baixa'],
+                            colors=['#e74c3c', '#f39c12', '#2ecc71'],
+                            alpha=0.7)
+
+                # Add total warnings line
+                total_warnings = np.array(high_severity[:min_warnings]) + \
+                                np.array(medium_severity[:min_warnings]) + \
+                                np.array(low_severity[:min_warnings])
+
+                ax3.plot(warning_timestamps[:min_warnings], total_warnings,
+                        'k-', linewidth=2, label='Total')
+
+                ax3.set_title('Avisos Gerados vs Tempo (por Severidade)', fontsize=14)
+                ax3.set_xlabel('Tempo (s)')
+                ax3.set_ylabel('Contagem')
+                ax3.legend(loc='upper left')
+                ax3.grid(True)
+            else:
+                ax3.text(0.5, 0.5, 'Dados insuficientes para avisos',
+                        horizontalalignment='center', verticalalignment='center',
+                        transform=ax3.transAxes)
+                ax3.set_title('Avisos Gerados vs Tempo (por Severidade)', fontsize=14)
+        else:
+            ax3.text(0.5, 0.5, 'Dados insuficientes para avisos',
+                     horizontalalignment='center', verticalalignment='center',
+                     transform=ax3.transAxes)
+            ax3.set_title('Avisos Gerados vs Tempo (por Severidade)', fontsize=14)
+
+        # Save the figure
+        plt.savefig(os.path.join(self.output_dir, 'additional_metrics.png'), dpi=150, bbox_inches='tight')
+        plt.close(fig)
+
+        print("Additional metrics charts generated successfully.")

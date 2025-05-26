@@ -9,7 +9,7 @@
         </head>
         <body>
             <h1>Relatório de Desempenho do Sistema de Detecção de Objetos e Avisos</h1>
-            <p>Gerado em: 26-05-2025 12:43:28</p>
+            <p>Gerado em: 26-05-2025 17:37:38</p>
         
         <div class="container">
             <h2>Resumo de Desempenho</h2>
@@ -17,32 +17,32 @@
         
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Tempo Médio de Detecção (s)</div>
-                    <div class="metric-value">0.0744</div>
+                    <div class="metric-value">0.0714</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>FPS Médio</div>
-                    <div class="metric-value">13.4342</div>
+                    <div class="metric-value">14.0115</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Total de Detecções</div>
-                    <div class="metric-value">544.0000</div>
+                    <div class="metric-value">742.0000</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Confiança Média</div>
-                    <div class="metric-value">0.6353</div>
+                    <div class="metric-value">0.6639</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Total de Avisos Gerados</div>
-                    <div class="metric-value">512.0000</div>
+                    <div class="metric-value">708.0000</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Tempo Total de Execução (s)</div>
-                    <div class="metric-value">446.0421</div>
+                    <div class="metric-value">404.7466</div>
                 </div>
                 
             </div>
@@ -56,7 +56,7 @@
         
                 <tr>
                     <td>max_detection_time</td>
-                    <td>0.4742155075073242</td>
+                    <td>0.41539573669433594</td>
                 </tr>
             
                 <tr>
@@ -66,7 +66,7 @@
             
                 <tr>
                     <td>avg_detections_per_frame</td>
-                    <td>0.37751561415683554</td>
+                    <td>0.4790187217559716</td>
                 </tr>
             
             </table>
@@ -103,6 +103,19 @@
                     <img src="../metrics_output/detection_times_histogram.png" alt="Histograma de Tempos de Detecção">
                     <div class="chart-description">
                         <p><strong>Descrição Científica:</strong> Este histograma representa a distribuição de probabilidade empírica dos tempos de detecção (D<sub>t</sub>). A frequência de cada bin é normalizada pelo número total de amostras. O histograma segue a modelagem f(x) = (1/n)∑<sub>i=1</sub><sup>n</sup>K((x-x<sub>i</sub>)/h), onde K é a função kernel (retangular neste caso), h é a largura do bin, e x<sub>i</sub> são os tempos de detecção observados. Este gráfico permite analisar a estabilidade temporal do algoritmo de detecção e identificar possíveis gargalos de desempenho em condições específicas.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart" style="flex: 0 0 100%;">
+                    <h3>Métricas Detalhadas de Desempenho</h3>
+                    <img src="../metrics_output/additional_metrics.png" alt="Métricas Adicionais">
+                    <div class="chart-description">
+                        <p><strong>Descrição Científica:</strong> Estas visualizações apresentam métricas críticas para análise temporal do sistema:
+                        (a) A confiança de detecção de placas de trânsito ao longo do tempo mostra como varia a confiança C<sub>placa</sub>(t) = (1/N<sub>placa,t</sub>)∑<sub>i=1</sub><sup>N<sub>placa,t</sub></sup>c<sub>i</sub> para as instâncias de placas de trânsito,
+                        (b) A taxa de frames por segundo (FPS) é representada como função F(t) = 1/T<sub>det</sub>(t), onde T<sub>det</sub> é o tempo de detecção em cada instante t. A versão suavizada utiliza média móvel F<sub>suav</sub>(t) = (1/w)∑<sub>i=t-w+1</sub><sup>t</sup>F(i) com janela w,
+                        (c) A distribuição de avisos ao longo do tempo é estratificada por severidade (alta, média, baixa) e segue um modelo de processo de Poisson não homogêneo com taxa λ(t) que varia em função da complexidade da cena.</p>
                     </div>
                 </div>
             </div>
@@ -186,31 +199,31 @@
                 <tr>
                     <td>Carro</td>
                     <td>1.0000</td>
-                    <td>0.6548</td>
+                    <td>0.6809</td>
                 </tr>
                 
                 <tr>
                     <td>Caminhão</td>
                     <td>1.0000</td>
-                    <td>0.3642</td>
+                    <td>0.3646</td>
                 </tr>
                 
                 <tr>
                     <td>Semáforo</td>
                     <td>1.0000</td>
-                    <td>0.4357</td>
+                    <td>0.4193</td>
                 </tr>
                 
                 <tr>
                     <td>Placa de pare</td>
                     <td>1.0000</td>
-                    <td>0.6938</td>
+                    <td>0.6936</td>
                 </tr>
                 
                 <tr>
                     <td>Banco</td>
                     <td>1.0000</td>
-                    <td>0.4875</td>
+                    <td>0.4916</td>
                 </tr>
                 
             </table>
@@ -298,14 +311,28 @@
                 <tr>
                     <td>Processamento em tempo real</td>
                     <td>>10 FPS</td>
-                    <td>13.43 FPS</td>
+                    <td>14.01 FPS</td>
                     <td>APROVADO</td>
                 </tr>
                 
                 <tr>
                     <td>Confiança de detecção</td>
                     <td>>0.7</td>
-                    <td>0.64</td>
+                    <td>0.66</td>
+                    <td>REPROVADO</td>
+                </tr>
+                
+                <tr>
+                    <td>Confiança de placas de trânsito</td>
+                    <td>>0.7</td>
+                    <td>0.69</td>
+                    <td>REPROVADO</td>
+                </tr>
+                
+                <tr>
+                    <td>Confiança de veículos</td>
+                    <td>>0.7</td>
+                    <td>0.68</td>
                     <td>REPROVADO</td>
                 </tr>
                 

@@ -307,6 +307,19 @@ class ResultsReporter:
                 </div>
             </div>
 
+            <div class="chart-container">
+                <div class="chart" style="flex: 0 0 100%;">
+                    <h3>Métricas Detalhadas de Desempenho</h3>
+                    <img src="../metrics_output/additional_metrics.png" alt="Métricas Adicionais">
+                    <div class="chart-description">
+                        <p><strong>Descrição Científica:</strong> Estas visualizações apresentam métricas críticas para análise temporal do sistema:
+                        (a) A confiança de detecção de placas de trânsito ao longo do tempo mostra como varia a confiança C<sub>placa</sub>(t) = (1/N<sub>placa,t</sub>)∑<sub>i=1</sub><sup>N<sub>placa,t</sub></sup>c<sub>i</sub> para as instâncias de placas de trânsito,
+                        (b) A taxa de frames por segundo (FPS) é representada como função F(t) = 1/T<sub>det</sub>(t), onde T<sub>det</sub> é o tempo de detecção em cada instante t. A versão suavizada utiliza média móvel F<sub>suav</sub>(t) = (1/w)∑<sub>i=t-w+1</sub><sup>t</sup>F(i) com janela w,
+                        (c) A distribuição de avisos ao longo do tempo é estratificada por severidade (alta, média, baixa) e segue um modelo de processo de Poisson não homogêneo com taxa λ(t) que varia em função da complexidade da cena.</p>
+                    </div>
+                </div>
+            </div>
+
             <h2>Análise de Placas de Trânsito</h2>
             <div class="chart-container">
                 <div class="chart">
@@ -392,17 +405,35 @@ class ResultsReporter:
                 except:
                     class_precision = {}
 
+            # ADD THIS CODE HERE - Extract class-specific confidence metrics
+            class_confidence = summary.get('class_avg_confidence', {})
+            if isinstance(class_confidence, str):
+                try:
+                    class_confidence = json.loads(class_confidence)
+                except:
+                    class_confidence = {}
+
             # Focus on key traffic classes
             traffic_sign_precision = 0
             car_precision = 0
 
+            # Get confidence for specific classes
+            traffic_sign_confidence = 0
+            car_confidence = 0
+
             # Traffic signs (class 11 is stop sign)
             if '11' in class_precision:
                 traffic_sign_precision = class_precision['11']
+            # ADD THIS CODE HERE - Get confidence for traffic signs
+            if '11' in class_confidence:
+                traffic_sign_confidence = class_confidence['11']
 
             # Cars (class 2)
             if '2' in class_precision:
                 car_precision = class_precision['2']
+            # ADD THIS CODE HERE - Get confidence for cars
+            if '2' in class_confidence:
+                car_confidence = class_confidence['2']
 
             # Calculate average for traffic-related objects
             traffic_related_precision = 0
@@ -424,6 +455,10 @@ class ResultsReporter:
             good_traffic_sign_detection = traffic_sign_precision > 0.8  # Boa detecção de placas
             good_car_detection = car_precision > 0.8  # Boa detecção de carros
 
+                    # ADD THIS CODE HERE - Add class-specific confidence thresholds
+            good_traffic_sign_confidence = traffic_sign_confidence > 0.7  # Boa confiança para placas
+            good_car_confidence = car_confidence > 0.7  # Boa confiança para carros
+
             html += """
             <h3>Critérios de Validação</h3>
             <table>
@@ -438,11 +473,12 @@ class ResultsReporter:
             criteria = [
                 ('Processamento em tempo real', '>10 FPS', f"{avg_fps:.2f} FPS", real_time_performance),
                 ('Confiança de detecção', '>0.7', f"{avg_confidence:.2f}", high_confidence),
+                ('Confiança de placas de trânsito', '>0.7', f"{traffic_sign_confidence:.2f}", good_traffic_sign_confidence),
+                ('Confiança de veículos', '>0.7', f"{car_confidence:.2f}", good_car_confidence),
                 ('Detecção de placas de trânsito', '>0.8', f"{traffic_sign_precision:.2f}", good_traffic_sign_detection),
                 ('Detecção de veículos', '>0.8', f"{car_precision:.2f}", good_car_detection),
                 ('Feedback gerado', 'Sim', 'Sim' if total_warnings > 0 else 'Não', total_warnings > 0)
             ]
-
             for criterion, target, actual, passed in criteria:
                 status = "APROVADO" if passed else "REPROVADO"
                 html += f"""
