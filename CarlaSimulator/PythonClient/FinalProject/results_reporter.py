@@ -23,6 +23,52 @@ class ResultsReporter:
         # Copia recursos estáticos para o relatório (CSS, JS)
         self._create_resources()
 
+        #  method to the ResultsReporter class:
+    def update_with_analysis_data(self, analysis_data):
+        """Update the reporter with comprehensive analysis data
+
+        Args:
+            analysis_data (dict): Dictionary containing analysis results
+        """
+        self.analysis_data = analysis_data
+
+        # Optionally, you can immediately use this data to enhance the report
+        if hasattr(self, 'last_report_path') and self.last_report_path and os.path.exists(self.last_report_path):
+            # Add analysis data to an existing report
+            self._append_analysis_to_report(self.last_report_path, analysis_data)
+
+        return True
+
+    def _append_analysis_to_report(self, report_path, analysis_data):
+        """Append additional analysis data to an existing report
+
+        Args:
+            report_path (str): Path to the existing HTML report
+            analysis_data (dict): Dictionary containing analysis results
+        """
+        # This is a simple implementation - you might want to make this more sophisticated
+        try:
+            with open(report_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+
+            # Find position to insert additional content (before closing body tag)
+            insert_pos = content.rfind('</body>')
+            if insert_pos > 0:
+                # Create HTML for analysis data
+                analysis_html = '<div class="container"><h2>Additional Analysis Data</h2>'
+                analysis_html += '<pre>' + json.dumps(analysis_data, indent=2) + '</pre></div>'
+
+                # Insert the new content
+                new_content = content[:insert_pos] + analysis_html + content[insert_pos:]
+
+                # Save updated report
+                with open(report_path, 'w', encoding='utf-8') as f:
+                    f.write(new_content)
+
+                print(f"Updated report with additional analysis data: {report_path}")
+        except Exception as e:
+            print(f"Error updating report with analysis data: {e}")
+
     def _create_resources(self):
         """Cria recursos CSS e JS para o relatório."""
         # Cria arquivo CSS
@@ -331,6 +377,71 @@ class ResultsReporter:
                         (b) A confiança por tipo de placa é uma média ponderada C(t) = ∑<sub>i</sub>c<sub>i</sub>/N<sub>t</sub> para cada tipo t,
                         (c) O tempo de resposta segue uma distribuição normal truncada com μ = t<sub>detecção</sub> + t<sub>latência</sub>,
                         (d) A taxa de sucesso por condição ambiental é calculada via validação cruzada estratificada por condição meteorológica.</p>
+                    </div>
+                </div>
+
+                <h2>Análise de Segurança e Assistência ao Condutor</h2>
+                <div class="chart-container">
+                    <div class="chart">
+                        <h3>Comparação de Tempo de Reação</h3>
+                        <img src="../metrics_output/reaction_time_comparison.png" alt="Comparação de Tempo de Reação">
+                        <div class="chart-description">
+                            <p><strong>Descrição Científica:</strong> Este gráfico compara o tempo de reação do sistema assistido com diferentes estados do condutor humano.
+                            Os tempos de reação humanos são baseados em estudos de psicofísica (Green, 2000; Makishita & Matsunaga, 2008) que estabelecem médias para diferentes
+                            estados de atenção. A melhoria percentual é calculada como Δt = (t<sub>humano</sub> - t<sub>sistema</sub>)/t<sub>humano</sub> × 100%.
+                            Este diferencial temporal é crítico para a segurança em velocidades elevadas, onde cada milissegundo de antecipação se traduz em distância de frenagem reduzida.</p>
+                        </div>
+                    </div>
+
+                    <div class="chart">
+                        <h3>Análise de Distância de Segurança</h3>
+                        <img src="../metrics_output/safety_distance_analysis.png" alt="Análise de Distância de Segurança">
+                        <div class="chart-description">
+                            <p><strong>Descrição Científica:</strong> A análise de distância de segurança demonstra como a diferença nos tempos de reação
+                            se traduz em distância de frenagem sob diferentes velocidades. A distância total de parada é modelada como d<sub>total</sub> = d<sub>reação</sub> + d<sub>frenagem</sub>,
+                            onde d<sub>reação</sub> = v × t<sub>reação</sub> e d<sub>frenagem</sub> = v²/(2a). A redução estimada de risco de colisão
+                            é derivada de modelos epidemiológicos de segurança viária que correlacionam distância de frenagem e probabilidade de acidente (Nilsson, 2004).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart">
+                        <h3>Confiabilidade por Tipo de Placa e Condição</h3>
+                        <img src="../metrics_output/sign_reliability_analysis.png" alt="Análise de Confiabilidade de Sinalização">
+                        <div class="chart-description">
+                            <p><strong>Descrição Científica:</strong> O mapa de calor apresenta a matriz de confiabilidade R(s,c) para cada tipo de sinalização s sob cada condição ambiental c.
+                            A estabilidade da detecção é quantificada pelo desvio padrão σ<sub>s</sub> = √(∑<sub>c</sub>(R(s,c) - μ<sub>s</sub>)²/n), onde μ<sub>s</sub> é a confiabilidade média
+                            para o tipo de sinalização s. Menor variância indica maior robustez do sistema frente a condições adversas, fator crítico para
+                            a confiabilidade operacional em ambientes reais com condições variáveis.</p>
+                        </div>
+                    </div>
+
+                    <div class="chart">
+                        <h3>Efetividade do Feedback Visual</h3>
+                        <img src="../metrics_output/feedback_effectiveness_analysis.png" alt="Análise de Efetividade do Feedback">
+                        <div class="chart-description">
+                            <p><strong>Descrição Científica:</strong> A efetividade do feedback é avaliada através de múltiplas dimensões de Interação Humano-Computador:
+                            tempo de exibição (t<sub>exib</sub>), visibilidade (V), compreensibilidade (C) e priorização (P). A efetividade global é calculada como
+                            E = w<sub>t</sub>t<sub>exib</sub> + w<sub>v</sub>V + w<sub>c</sub>C + w<sub>p</sub>P, onde w<sub>i</sub> são pesos de importância derivados
+                            de estudos de usabilidade em sistemas de assistência ao condutor (Lee et al., 2017). A comparação com outros sistemas estabelece
+                            um referencial para validar a abordagem proposta.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <div class="chart" style="flex: 0 0 100%;">
+                        <h3>Análise Integrada de Desempenho-Segurança</h3>
+                        <img src="../metrics_output/integrated_performance_safety.png" alt="Análise Integrada">
+                        <div class="chart-description">
+                            <p><strong>Descrição Científica:</strong> Esta visualização integrada estabelece a correlação entre métricas de desempenho técnico e benefícios de segurança.
+                            A relação entre FPS e distância de segurança segue um modelo não-linear d<sub>seg</sub> = v(1/FPS + t<sub>overhead</sub>) + v²/(2a),
+                            onde o primeiro termo representa a distância percorrida durante o tempo de reação do sistema e o segundo a distância de frenagem física.
+                            A decomposição do tempo de resposta ilustra o paradigma de processamento em pipeline t<sub>total</sub> = ∑<sub>i</sub>t<sub>i</sub>,
+                            evidenciando os componentes críticos do sistema. Esta análise quantifica objetivamente o impacto do desempenho computacional
+                            na segurança prática do sistema.</p>
+                        </div>
                     </div>
                 </div>
 

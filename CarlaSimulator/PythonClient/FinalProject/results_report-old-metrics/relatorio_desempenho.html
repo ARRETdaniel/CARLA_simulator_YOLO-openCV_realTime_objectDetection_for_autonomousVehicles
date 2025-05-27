@@ -9,7 +9,7 @@
         </head>
         <body>
             <h1>Relatório de Desempenho do Sistema de Detecção de Objetos e Avisos</h1>
-            <p>Gerado em: 27-05-2025 13:56:06</p>
+            <p>Gerado em: 26-05-2025 17:37:38</p>
         
         <div class="container">
             <h2>Resumo de Desempenho</h2>
@@ -17,32 +17,32 @@
         
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Tempo Médio de Detecção (s)</div>
-                    <div class="metric-value">0.0682</div>
+                    <div class="metric-value">0.0714</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>FPS Médio</div>
-                    <div class="metric-value">14.6726</div>
+                    <div class="metric-value">14.0115</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Total de Detecções</div>
-                    <div class="metric-value">797.0000</div>
+                    <div class="metric-value">742.0000</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Confiança Média</div>
-                    <div class="metric-value">0.6638</div>
+                    <div class="metric-value">0.6639</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Total de Avisos Gerados</div>
-                    <div class="metric-value">764.0000</div>
+                    <div class="metric-value">708.0000</div>
                 </div>
                 
                 <div class="metric-card" style="flex: 0 0 30%;">
                     <div>Tempo Total de Execução (s)</div>
-                    <div class="metric-value">404.8193</div>
+                    <div class="metric-value">404.7466</div>
                 </div>
                 
             </div>
@@ -56,42 +56,17 @@
         
                 <tr>
                     <td>max_detection_time</td>
-                    <td>0.32378578186035156</td>
+                    <td>0.41539573669433594</td>
                 </tr>
             
                 <tr>
                     <td>min_detection_time</td>
-                    <td>0.004993915557861328</td>
+                    <td>0.0</td>
                 </tr>
             
                 <tr>
                     <td>avg_detections_per_frame</td>
-                    <td>0.4944168734491315</td>
-                </tr>
-            
-                <tr>
-                    <td>detection_time_confidence_interval</td>
-                    <td>[0.06540713219588228, 0.07090141331428908]</td>
-                </tr>
-            
-                <tr>
-                    <td>detection_time_confidence_level</td>
-                    <td>0.95</td>
-                </tr>
-            
-                <tr>
-                    <td>detection_time_ci_lower</td>
-                    <td>0.0654195094522708</td>
-                </tr>
-            
-                <tr>
-                    <td>detection_time_ci_upper</td>
-                    <td>0.07093095631516601</td>
-                </tr>
-            
-                <tr>
-                    <td>statistical_power</td>
-                    <td>1.0</td>
+                    <td>0.4790187217559716</td>
                 </tr>
             
             </table>
@@ -156,71 +131,6 @@
                         (b) A confiança por tipo de placa é uma média ponderada C(t) = ∑<sub>i</sub>c<sub>i</sub>/N<sub>t</sub> para cada tipo t,
                         (c) O tempo de resposta segue uma distribuição normal truncada com μ = t<sub>detecção</sub> + t<sub>latência</sub>,
                         (d) A taxa de sucesso por condição ambiental é calculada via validação cruzada estratificada por condição meteorológica.</p>
-                    </div>
-                </div>
-
-                <h2>Análise de Segurança e Assistência ao Condutor</h2>
-                <div class="chart-container">
-                    <div class="chart">
-                        <h3>Comparação de Tempo de Reação</h3>
-                        <img src="../metrics_output/reaction_time_comparison.png" alt="Comparação de Tempo de Reação">
-                        <div class="chart-description">
-                            <p><strong>Descrição Científica:</strong> Este gráfico compara o tempo de reação do sistema assistido com diferentes estados do condutor humano.
-                            Os tempos de reação humanos são baseados em estudos de psicofísica (Green, 2000; Makishita & Matsunaga, 2008) que estabelecem médias para diferentes
-                            estados de atenção. A melhoria percentual é calculada como Δt = (t<sub>humano</sub> - t<sub>sistema</sub>)/t<sub>humano</sub> × 100%.
-                            Este diferencial temporal é crítico para a segurança em velocidades elevadas, onde cada milissegundo de antecipação se traduz em distância de frenagem reduzida.</p>
-                        </div>
-                    </div>
-
-                    <div class="chart">
-                        <h3>Análise de Distância de Segurança</h3>
-                        <img src="../metrics_output/safety_distance_analysis.png" alt="Análise de Distância de Segurança">
-                        <div class="chart-description">
-                            <p><strong>Descrição Científica:</strong> A análise de distância de segurança demonstra como a diferença nos tempos de reação
-                            se traduz em distância de frenagem sob diferentes velocidades. A distância total de parada é modelada como d<sub>total</sub> = d<sub>reação</sub> + d<sub>frenagem</sub>,
-                            onde d<sub>reação</sub> = v × t<sub>reação</sub> e d<sub>frenagem</sub> = v²/(2a). A redução estimada de risco de colisão
-                            é derivada de modelos epidemiológicos de segurança viária que correlacionam distância de frenagem e probabilidade de acidente (Nilsson, 2004).</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="chart-container">
-                    <div class="chart">
-                        <h3>Confiabilidade por Tipo de Placa e Condição</h3>
-                        <img src="../metrics_output/sign_reliability_analysis.png" alt="Análise de Confiabilidade de Sinalização">
-                        <div class="chart-description">
-                            <p><strong>Descrição Científica:</strong> O mapa de calor apresenta a matriz de confiabilidade R(s,c) para cada tipo de sinalização s sob cada condição ambiental c.
-                            A estabilidade da detecção é quantificada pelo desvio padrão σ<sub>s</sub> = √(∑<sub>c</sub>(R(s,c) - μ<sub>s</sub>)²/n), onde μ<sub>s</sub> é a confiabilidade média
-                            para o tipo de sinalização s. Menor variância indica maior robustez do sistema frente a condições adversas, fator crítico para
-                            a confiabilidade operacional em ambientes reais com condições variáveis.</p>
-                        </div>
-                    </div>
-
-                    <div class="chart">
-                        <h3>Efetividade do Feedback Visual</h3>
-                        <img src="../metrics_output/feedback_effectiveness_analysis.png" alt="Análise de Efetividade do Feedback">
-                        <div class="chart-description">
-                            <p><strong>Descrição Científica:</strong> A efetividade do feedback é avaliada através de múltiplas dimensões de Interação Humano-Computador:
-                            tempo de exibição (t<sub>exib</sub>), visibilidade (V), compreensibilidade (C) e priorização (P). A efetividade global é calculada como
-                            E = w<sub>t</sub>t<sub>exib</sub> + w<sub>v</sub>V + w<sub>c</sub>C + w<sub>p</sub>P, onde w<sub>i</sub> são pesos de importância derivados
-                            de estudos de usabilidade em sistemas de assistência ao condutor (Lee et al., 2017). A comparação com outros sistemas estabelece
-                            um referencial para validar a abordagem proposta.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="chart-container">
-                    <div class="chart" style="flex: 0 0 100%;">
-                        <h3>Análise Integrada de Desempenho-Segurança</h3>
-                        <img src="../metrics_output/integrated_performance_safety.png" alt="Análise Integrada">
-                        <div class="chart-description">
-                            <p><strong>Descrição Científica:</strong> Esta visualização integrada estabelece a correlação entre métricas de desempenho técnico e benefícios de segurança.
-                            A relação entre FPS e distância de segurança segue um modelo não-linear d<sub>seg</sub> = v(1/FPS + t<sub>overhead</sub>) + v²/(2a),
-                            onde o primeiro termo representa a distância percorrida durante o tempo de reação do sistema e o segundo a distância de frenagem física.
-                            A decomposição do tempo de resposta ilustra o paradigma de processamento em pipeline t<sub>total</sub> = ∑<sub>i</sub>t<sub>i</sub>,
-                            evidenciando os componentes críticos do sistema. Esta análise quantifica objetivamente o impacto do desempenho computacional
-                            na segurança prática do sistema.</p>
-                        </div>
                     </div>
                 </div>
 
@@ -289,31 +199,31 @@
                 <tr>
                     <td>Carro</td>
                     <td>1.0000</td>
-                    <td>0.6791</td>
+                    <td>0.6809</td>
                 </tr>
                 
                 <tr>
                     <td>Caminhão</td>
                     <td>1.0000</td>
-                    <td>0.3692</td>
+                    <td>0.3646</td>
                 </tr>
                 
                 <tr>
                     <td>Semáforo</td>
                     <td>1.0000</td>
-                    <td>0.4355</td>
+                    <td>0.4193</td>
                 </tr>
                 
                 <tr>
                     <td>Placa de pare</td>
                     <td>1.0000</td>
-                    <td>0.6803</td>
+                    <td>0.6936</td>
                 </tr>
                 
                 <tr>
                     <td>Banco</td>
                     <td>1.0000</td>
-                    <td>0.5152</td>
+                    <td>0.4916</td>
                 </tr>
                 
             </table>
@@ -401,7 +311,7 @@
                 <tr>
                     <td>Processamento em tempo real</td>
                     <td>>10 FPS</td>
-                    <td>14.67 FPS</td>
+                    <td>14.01 FPS</td>
                     <td>APROVADO</td>
                 </tr>
                 
@@ -415,7 +325,7 @@
                 <tr>
                     <td>Confiança de placas de trânsito</td>
                     <td>>0.7</td>
-                    <td>0.68</td>
+                    <td>0.69</td>
                     <td>REPROVADO</td>
                 </tr>
                 

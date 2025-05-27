@@ -1,0 +1,19 @@
+avg_detection_time,0.06880181538612531
+max_detection_time,0.38919711112976074
+min_detection_time,0.00520777702331543
+avg_fps,14.534500207412574
+total_detections,730
+avg_detections_per_frame,0.479317137229153
+detection_classes_distribution,{"2": 560, "13": 36, "11": 113, "7": 16, "9": 5}
+avg_confidence,0.6698992016789032
+total_warnings,694
+warning_types_distribution,{"car": 560, "stop sign": 113, "truck": 16, "traffic light": 5}
+warning_severities,{"HIGH": 113, "MEDIUM": 5, "LOW": 576}
+total_runtime_seconds,401.302121
+class_precision,{"2": 1.0, "7": 1.0, "9": 1.0, "11": 1.0, "13": 1.0}
+class_avg_confidence,{"2": 0.6851623412753854, "13": 0.505274310708046, "11": 0.6996105766814688, "7": 0.35431546717882156, "9": 0.411689305305481}
+distance_detection_rates,{"pr\u00f3ximo": 1.0, "m\u00e9dio": 1.0, "distante": 1.0}
+detection_time_confidence_interval,[0.06574721736575738, 0.07185641340649325]
+detection_time_confidence_level,0.95
+detection_time_ci_lower,0.06574383614803722
+detection_time_ci_upper,0.07215884040236395

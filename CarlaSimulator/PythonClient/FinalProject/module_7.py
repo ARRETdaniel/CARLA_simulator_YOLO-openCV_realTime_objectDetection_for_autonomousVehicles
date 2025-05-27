@@ -31,6 +31,14 @@ import behavioural_planner
 import cv2 # image processig
 import colorsys
 import atexit
+import csv
+import json
+import time
+import glob
+import traceback
+from datetime import datetime
+import seaborn as sns
+
 
 #test show  image console
 from PIL import Image
@@ -195,6 +203,27 @@ WINDOW_HEIGHT = 480
 MINI_WINDOW_WIDTH = 320
 MINI_WINDOW_HEIGHT = 180
 
+
+# Add this at the top of the file, after other imports
+
+# Check and install required packages
+def check_and_install_dependencies():
+    import importlib
+    import subprocess
+    import sys
+
+    required_packages = ['statsmodels', 'seaborn']
+
+    for package in required_packages:
+        try:
+            importlib.import_module(package)
+            print(f"✓ {package} is already installed")
+        except ImportError:
+            print(f"Installing {package}...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+            print(f"✓ {package} has been installed")
+
+# Run dependency check at startup
 
 
 
@@ -583,6 +612,10 @@ def exec_waypoint_nav_demo(args):
 
         # Initialize the threaded detector wrapper
         threaded_detector = ThreadedDetector(yolo_detector)
+
+        # weather
+        current_weather = SIMWEATHER  # This is already in code
+        metrics.update_weather_condition(current_weather)
 
         # Initialize frame counter for FPS display
         frame_count = 0
@@ -1136,6 +1169,7 @@ def exec_waypoint_nav_demo(args):
                     frame_obj_to_detect,
                     metrics=metrics
                 )
+                timestamp = (datetime.now() - metrics.init_time).total_seconds()
 
                 # Display current FPS
                 detection_fps = threaded_detector.get_fps()
@@ -1167,6 +1201,8 @@ def exec_waypoint_nav_demo(args):
                 if boxes is not None and len(boxes) > 0:
                     risk_level = yolo_detector._calculate_traffic_risk(boxes, classids, confidences)
                     metrics.record_risk_level(risk_level)
+                    # Record the detection results
+                    metrics.record_sign_detection(timestamp, classids, confidences, boxes, idxs)
 
             except Exception as e:
                 print(f"Detection failed: {e}")
@@ -1508,6 +1544,9 @@ def exec_waypoint_nav_demo(args):
                 cmd_steer = 0.0
                 cmd_brake = 0.0
 
+            metrics.record_vehicle_response(timestamp, cmd_throttle, cmd_brake,
+                               cmd_steer, current_speed)
+
             # Skip the first frame or if there exists no local paths
             if skip_first_frame and frame == 0:
                 pass
@@ -1619,6 +1658,42 @@ def exec_waypoint_nav_demo(args):
 
     print("Testing complete - results available in 'results_report/performance_report.html'")
 
+
+#  cleanup
+def cleanup():
+    try:
+        print("Performing cleanup...")
+        # Close detector connections if they exist
+        if 'yolo_detector' in globals() and yolo_detector:
+            yolo_detector.close()
+
+        # Ensure metrics are saved
+        if 'metrics' in globals() and metrics:
+            try:
+                metrics.generate_summary()
+                metrics.visualize_metrics()
+                print("Performance metrics saved successfully")
+            except Exception as e:
+                print(f"Error saving metrics: {e}")
+
+        # Delete any temporary files
+        temp_files = glob.glob('temp_*.jpg')
+        for file in temp_files:
+            try:
+                os.remove(file)
+            except:
+                pass
+
+        print("Cleanup completed")
+    except Exception as e:
+        print(f"Error during cleanup: {e}")
+
+# Register cleanup
+atexit.register(cleanup)
+
+# Register cleanup function
+atexit.register(cleanup)
+
 def main():
     """Main function.
 
@@ -1680,15 +1755,32 @@ def main():
     args.out_filename_format = '_out/episode_{:0>4d}/{:s}/{:0>6d}'
 
     # Execute when server connection is established
-    while True:
-        try:
-            exec_waypoint_nav_demo(args)
-            print('Done.')
-            return
+    try:
+        while True:
+            try:
+                #check_and_install_dependencies()
+                exec_waypoint_nav_demo(args)
+                print("Waypoint navigation demo completed successfully")
+                break
+            except TCPConnectionError as error:
+                logging.error(error)
+                logging.info("Reconnecting to server in 1 seconds...")
+                time.sleep(1)
+                break
 
-        except TCPConnectionError as error:
-            logging.error(error)
-            time.sleep(1)
+            except KeyboardInterrupt:
+                print("\nCancelled by user. Bye!")
+                break
+            except Exception as e:
+                logging.error(f"Unexpected error during execution: {e}")
+                logging.info("Attempting to recover in 5 seconds...")
+                traceback.print_exc()
+                time.sleep(5)
+                break
+
+    finally:
+        print("Cleaning up resources...")
+        cleanup()
 
 if __name__ == '__main__':
 
@@ -1696,17 +1788,3 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         print('\nCancelled by user. Bye!')
-
-#  cleanup
-def cleanup():
-    try:
-        if 'threaded_detector' in globals():
-            threaded_detector.shutdown()
-        if 'yolo_detector' in globals():
-            yolo_detector.close()
-        print("Clean shutdown complete")
-    except Exception as e:
-        print(f"Error during cleanup: {e}")
-
-# Register cleanup
-atexit.register(cleanup)

@@ -1,15 +1,22 @@
-avg_detection_time,0.07136977265310565
-max_detection_time,0.41539573669433594
-min_detection_time,0.0
-avg_fps,14.011534054627328
-total_detections,742
-avg_detections_per_frame,0.4790187217559716
-detection_classes_distribution,{"2": 559, "13": 34, "11": 123, "7": 17, "9": 9}
-avg_confidence,0.6639301439501205
-total_warnings,708
-warning_types_distribution,{"car": 559, "stop sign": 123, "truck": 17, "traffic light": 9}
-warning_severities,{"HIGH": 123, "MEDIUM": 9, "LOW": 576}
-total_runtime_seconds,404.74663
+avg_detection_time,0.06815427275508568
+max_detection_time,0.32378578186035156
+min_detection_time,0.004993915557861328
+avg_fps,14.672594388814455
+total_detections,797
+avg_detections_per_frame,0.4944168734491315
+detection_classes_distribution,{"2": 613, "13": 33, "11": 127, "7": 19, "9": 5}
+avg_confidence,0.6637775648567578
+total_warnings,764
+warning_types_distribution,{"car": 613, "stop sign": 127, "truck": 19, "traffic light": 5}
+warning_severities,{"HIGH": 127, "MEDIUM": 5, "LOW": 632}
+total_runtime_seconds,404.819257
 class_precision,{"2": 1.0, "7": 1.0, "9": 1.0, "11": 1.0, "13": 1.0}
-class_avg_confidence,{"2": 0.6809211299223209, "13": 0.49157028689103965, "11": 0.6936217236325024, "7": 0.3646460999460781, "9": 0.41926774713728165}
+class_avg_confidence,{"2": 0.6791313815175223, "13": 0.5151860957795923, "11": 0.6802778351120651, "7": 0.3691602035572654, "9": 0.4355192601680756}
 distance_detection_rates,{"pr\u00f3ximo": 1.0, "m\u00e9dio": 1.0, "distante": 1.0}
+detection_time_confidence_interval,[0.06540713219588228, 0.07090141331428908]
+detection_time_confidence_level,0.95
+detection_time_ci_lower,0.0654195094522708
+detection_time_ci_upper,0.07093095631516601
+detection_time_hypothesis_test,{"null_hypothesis": "Average detection time = 0.1s", "alternative": "Average detection time \u2260 0.1s", "t_statistic": -22.73760881869347, "p_value": 1.734738677738327e-99, "significant": true, "conclusion": "Reject null hypothesis"}
+statistical_power,1.0
+confidence_response_correlation,{"correlation_coefficient": -0.1844912098081787, "p_value": 0.016997122582231867, "significant": true, "interpretation": "Weak negative correlation"}
