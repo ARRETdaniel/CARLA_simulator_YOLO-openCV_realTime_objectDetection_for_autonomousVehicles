@@ -1,8 +1,8 @@
 {
     "reaction_time_analysis": {
-        "system_reaction_time": 0.008990610778443079,
+        "system_reaction_time": 0.005142634146341602,
         "human_attentive_reaction_time": 1.2,
-        "improvement_percentage": 99.25078243512975
+        "improvement_percentage": 99.57144715447154
     },
     "safety_distance_analysis": {
         "speeds": [
@@ -18,16 +18,16 @@
             88.44797178130511
         ],
         "system_distances": [
-            5.035239216804487,
-            13.90352920613799,
-            35.473159957334005,
-            55.36437763626187
+            5.003172744870308,
+            13.850085086247692,
+            35.387649365509525,
+            55.257489396481276
         ],
         "distance_saved": [
-            9.925078243512974,
-            16.541797072521625,
-            26.466875316034596,
-            33.08359414504324
+            9.957144715447154,
+            16.595241192411923,
+            26.552385907859076,
+            33.19048238482384
         ],
         "collision_reduction": [
             90.0,
@@ -39,10 +39,10 @@
     "sign_reliability_analysis": {
         "reliability_matrix": [
             [
-                0.6802778351120651,
-                0.6802778351120651,
-                0.6802778351120651,
-                0.6802778351120651
+                0.6787235036026686,
+                0.6787235036026686,
+                0.6787235036026686,
+                0.6787235036026686
             ],
             [
                 0.9,
@@ -51,16 +51,16 @@
                 0.7
             ],
             [
-                0.5151860957795923,
-                0.5151860957795923,
-                0.5151860957795923,
-                0.5151860957795923
+                0.5003022800792347,
+                0.5003022800792347,
+                0.5003022800792347,
+                0.5003022800792347
             ]
         ],
         "mean_reliability": [
-            0.6802778351120651,
+            0.6787235036026686,
             0.8125,
-            0.5151860957795923
+            0.5003022800792347
         ],
         "std_reliability": [
             0.0,
@@ -97,9 +97,9 @@
         ]
     },
     "integrated_performance_safety_analysis": {
-        "current_fps": 14.672594388814455,
-        "fps_distribution_mean": 15.948804958195138,
-        "fps_distribution_std": 10.793909492424438,
+        "current_fps": 14.398084520166773,
+        "fps_distribution_mean": 15.498435639733465,
+        "fps_distribution_std": 10.350813175890547,
         "component_times": [
             10,
             30,
@@ -131,6 +131,131 @@
             11.805555555555555,
             15.277777777777779,
             21.52777777777778
+        ]
+    },
+    "human_comparison_analysis": {
+        "detection_comparison": {
+            "categories": [
+                "Placas de Pare",
+                "Limites de\nVelocidade",
+                "Todas as\nPlacas"
+            ],
+            "human_rates": [
+                0.75,
+                0.68,
+                0.72
+            ],
+            "system_rates": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        "response_time_comparison": {
+            "categories": [
+                "Critical",
+                "Normal"
+            ],
+            "human_times": [
+                1.8,
+                1.2
+            ],
+            "system_times": [
+                0.0,
+                0.005142634146341602
+            ]
+        },
+        "reliability_comparison": {
+            "conditions": [
+                "Dia Claro",
+                "Entardecer",
+                "Chuva",
+                "Neblina"
+            ],
+            "human_reliability": [
+                0.85,
+                0.55,
+                0.6,
+                0.4
+            ],
+            "system_reliability": [
+                1.0,
+                0.85,
+                0.8,
+                0.75
+            ]
+        },
+        "safety_metrics": {
+            "metrics": [
+                "Antecipa\u00e7\u00e3o de\nRiscos",
+                "Conformidade com\nLimites",
+                "Tempo de Rea\u00e7\u00e3o\nAdequado",
+                "Seguran\u00e7a\nGeral"
+            ],
+            "human_scores": [
+                65,
+                70,
+                60,
+                65
+            ],
+            "system_scores": [
+                90,
+                95.0,
+                96.25653194661177,
+                94
+            ]
+        }
+    },
+    "distance_metrics_analysis": {
+        "distance_bands": [
+            "pr\u00f3ximo",
+            "m\u00e9dio",
+            "distante"
+        ],
+        "detection_counts": [
+            9,
+            78,
+            652
+        ],
+        "total_objects": [
+            9,
+            78,
+            652
+        ],
+        "detection_rates": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "class_precision_analysis": {
+        "class_ids": [
+            2,
+            3,
+            7,
+            9,
+            11
+        ],
+        "class_names": [
+            "Ve\u00edculo",
+            "Motocicleta",
+            "Caminh\u00e3o",
+            "Sem\u00e1foro",
+            "Placa de Pare"
+        ],
+        "precisions": [
+            1.0,
+            1.0,
+            1.0,
+            1.0,
+            1.0
+        ],
+        "confidences": [
+            0.69247428589576,
+            0.8614991307258606,
+            0.36352478464444477,
+            0.4698440879583359,
+            0.6787235036026686
         ]
     }
 }
