@@ -2291,22 +2291,34 @@ class PerformanceMetrics:
 
         # If we don't have enough real data, use example values with realistic distribution
         if not has_real_stop_data:
+            # Use more realistic distribution (not all concentrated in one slice)
             response_values = [0.82, 0.12, 0.03, 0.03]
             self._log_using_example_data("stop sign response visualization",
                                 "Based on typical autonomous vehicle behaviors")
 
-        # Create pie chart
-        colors = ['#2ecc71', '#f1c40f', '#e74c3c', '#7f8c8d']
+        # Create pie chart with better colors and visual design
+        colors = ['#2ecc71', '#f1c40f', '#e74c3c', '#7f8c8d']  # Green, Yellow, Red, Gray
         explode = (0.05, 0, 0, 0)  # Explode the largest slice slightly
 
+        # Make sure values sum to 1.0 (handle floating point errors)
+        response_values = [v / sum(response_values) for v in response_values]
+
+        # Add labels with percentages and values
         ax4.pie(response_values, labels=categories, autopct='%1.1f%%', startangle=90,
-                colors=colors, explode=explode, shadow=True)
+                colors=colors, explode=explode, shadow=True,
+                wedgeprops={'linewidth': 1, 'edgecolor': 'white'})
 
-        ax4.set_title('Resposta à Placa de Parada', fontsize=14)
+        # Add a title with clear explanation
+        ax4.set_title('Resposta do Sistema à Placa de Parada', fontsize=14)
 
-        # Add data source note
+        # Add better legend with meaning of each category
+        legend_text = "Parada Completa: Redução para <5 km/h\nParada Parcial: Redução significativa\nNão Parou: Mínima ou nenhuma redução\nFalha na Detecção: Placa não detectada"
+        ax4.text(1.0, -0.2, legend_text, transform=ax4.transAxes, fontsize=8,
+                bbox=dict(facecolor='white', alpha=0.8, boxstyle='round'))
+
+        # Add data source note with improved formatting
         if has_real_stop_data:
-            ax4.text(0.5, -0.1, "Fonte: Respostas reais do sistema registradas durante simulação",
+            ax4.text(0.5, -0.1, f"Fonte: {len(stop_sign_detections)} detecções reais de placas de PARE",
                 ha='center', transform=ax4.transAxes, fontsize=8,
                 bbox=dict(facecolor='lightgreen', alpha=0.4))
         else:
@@ -3716,6 +3728,10 @@ class PerformanceMetrics:
 
         if has_real_confidence_data:
             plt.plot(timestamps, confidences, 'o-', alpha=0.7, color='blue')
+            # Add label indicating real data
+            plt.text(0.5, 0.05, "Fonte: Dados reais da simulação",
+                    ha='center', transform=plt.gca().transAxes, fontsize=9,
+                    bbox=dict(facecolor='lightgreen', alpha=0.4))
         else:
             # Generate example data
             example_timestamps = np.linspace(0, 100, 30)
@@ -3724,6 +3740,10 @@ class PerformanceMetrics:
             plt.plot(example_timestamps, example_confidences, 'o-', alpha=0.7, color='blue')
             self._log_using_example_data("traffic sign confidence visualization",
                                     "Based on typical YOLO confidence patterns")
+            # Add label indicating example data
+            plt.text(0.5, 0.05, "Fonte: Dados aproximados baseados em padrões típicos",
+                    ha='center', transform=plt.gca().transAxes, fontsize=9,
+                    bbox=dict(facecolor='lightyellow', alpha=0.4))
 
         plt.title('Confiança de Detecção de Placas de Trânsito ao Longo do Tempo', fontsize=12)
         plt.xlabel('Tempo (s)')
@@ -3757,6 +3777,11 @@ class PerformanceMetrics:
                     smoothed_time = time_points[window_size-1:]
                     plt.plot(smoothed_time, smoothed_fps, '-', linewidth=2, color='blue',
                             label='FPS Médio (Janela Móvel)')
+
+            # Add label indicating real data
+            plt.text(0.5, 0.05, "Fonte: Tempos de detecção reais medidos durante simulação",
+                    ha='center', transform=plt.gca().transAxes, fontsize=9,
+                    bbox=dict(facecolor='lightgreen', alpha=0.4))
         else:
             # Example data
             example_time = np.linspace(0, 100, 50)
@@ -3772,6 +3797,11 @@ class PerformanceMetrics:
             self._log_using_example_data("FPS timeline visualization",
                                     "Based on typical performance patterns")
 
+            # Add label indicating example data
+            plt.text(0.5, 0.05, "Fonte: Dados aproximados baseados em padrões de desempenho típicos",
+                    ha='center', transform=plt.gca().transAxes, fontsize=9,
+                    bbox=dict(facecolor='lightyellow', alpha=0.4))
+
         plt.title('Taxa de Frames por Segundo (FPS) ao Longo do Tempo', fontsize=12)
         plt.xlabel('Tempo (s)')
         plt.ylabel('FPS')
@@ -3785,6 +3815,8 @@ class PerformanceMetrics:
         has_real_warning_data = False
         warning_timestamps = []
         warning_severities = []
+        warning_counts = {'ALTA': [], 'MÉDIA': [], 'BAIXA': []}
+        warning_times = {'ALTA': [], 'MÉDIA': [], 'BAIXA': []}
 
         if hasattr(self, 'warnings_generated') and sum(self.warnings_generated) > 0:
             # Try to reconstruct warning timeline from warning log
@@ -3806,12 +3838,18 @@ class PerformanceMetrics:
                                     if high_count > 0:
                                         warning_timestamps.append(timestamp)
                                         warning_severities.append('ALTA')
+                                        warning_counts['ALTA'].append(high_count)
+                                        warning_times['ALTA'].append(timestamp)
                                     if medium_count > 0:
                                         warning_timestamps.append(timestamp)
                                         warning_severities.append('MÉDIA')
+                                        warning_counts['MÉDIA'].append(medium_count)
+                                        warning_times['MÉDIA'].append(timestamp)
                                     if low_count > 0:
                                         warning_timestamps.append(timestamp)
                                         warning_severities.append('BAIXA')
+                                        warning_counts['BAIXA'].append(low_count)
+                                        warning_times['BAIXA'].append(timestamp)
                                 except (ValueError, IndexError):
                                     continue
 
@@ -3821,56 +3859,50 @@ class PerformanceMetrics:
                     print(f"Error reading warning data: {e}")
 
         if has_real_warning_data:
-            # Create a scatter plot with different colors for severities
+            # Create a time-series plot of warnings by severity
             severity_colors = {'ALTA': 'red', 'MÉDIA': 'orange', 'BAIXA': 'blue'}
 
-            # Get unique timestamps for x-axis ticks
-            unique_timestamps = sorted(list(set(warning_timestamps)))
+            # Plot warning counts over time for each severity
+            for severity in ['ALTA', 'MÉDIA', 'BAIXA']:
+                if warning_times[severity]:
+                    plt.plot(warning_times[severity], warning_counts[severity], 'o-',
+                            label=f'Severidade {severity}', color=severity_colors[severity], alpha=0.7)
 
-            # Create jittered y-positions for better visualization when multiple warnings at same time
-            y_positions = []
-            for i, ts in enumerate(warning_timestamps):
-                # Add small vertical jitter for same timestamps
-                same_time_count = warning_timestamps[:i].count(ts)
-                y_positions.append(0.1 * same_time_count)
-
-            # Create scatter plot
-            for sev in ['ALTA', 'MÉDIA', 'BAIXA']:
-                sev_indices = [i for i, s in enumerate(warning_severities) if s == sev]
-                if sev_indices:
-                    sev_times = [warning_timestamps[i] for i in sev_indices]
-                    sev_y = [y_positions[i] for i in sev_indices]
-                    plt.scatter(sev_times, sev_y, color=severity_colors[sev],
-                            label=f'Severidade {sev}', s=100, alpha=0.7)
-
-            # Add vertical lines for warning events
-            for ts in unique_timestamps:
-                plt.axvline(x=ts, color='gray', alpha=0.2, linestyle='--')
+            # Add label indicating real data
+            plt.text(0.5, 0.05, "Fonte: Registros reais de avisos da simulação",
+                    ha='center', transform=plt.gca().transAxes, fontsize=9,
+                    bbox=dict(facecolor='lightgreen', alpha=0.4))
         else:
             # Example data
-            example_times = np.sort(np.random.uniform(0, 100, 20))
-            example_severities = np.random.choice(['ALTA', 'MÉDIA', 'BAIXA'], 20,
-                                                p=[0.2, 0.5, 0.3])
+            example_times = {
+                'ALTA': np.sort(np.random.uniform(0, 100, 5)),
+                'MÉDIA': np.sort(np.random.uniform(0, 100, 10)),
+                'BAIXA': np.sort(np.random.uniform(0, 100, 15))
+            }
 
-            # Create scatter plot
-            for sev in ['ALTA', 'MÉDIA', 'BAIXA']:
-                sev_indices = [i for i, s in enumerate(example_severities) if s == sev]
-                if sev_indices:
-                    sev_times = [example_times[i] for i in sev_indices]
-                    sev_y = [0 for _ in sev_indices]  # All at same height
-                    plt.scatter(sev_times, sev_y,
-                            label=f'Severidade {sev}', s=100, alpha=0.7)
+            example_counts = {
+                'ALTA': np.random.randint(1, 3, size=5),
+                'MÉDIA': np.random.randint(1, 5, size=10),
+                'BAIXA': np.random.randint(1, 8, size=15)
+            }
 
-            # Add vertical lines
-            for ts in example_times:
-                plt.axvline(x=ts, color='gray', alpha=0.2, linestyle='--')
+            # Create time-series plot for each severity
+            severity_colors = {'ALTA': 'red', 'MÉDIA': 'orange', 'BAIXA': 'blue'}
+            for severity in ['ALTA', 'MÉDIA', 'BAIXA']:
+                plt.plot(example_times[severity], example_counts[severity], 'o-',
+                        label=f'Severidade {severity}', color=severity_colors[severity], alpha=0.7)
 
             self._log_using_example_data("warning distribution visualization",
                                     "Based on typical warning patterns")
 
+            # Add label indicating example data
+            plt.text(0.5, 0.05, "Fonte: Dados aproximados baseados em padrões típicos de avisos",
+                    ha='center', transform=plt.gca().transAxes, fontsize=9,
+                    bbox=dict(facecolor='lightyellow', alpha=0.4))
+
         plt.title('Distribuição de Avisos ao Longo do Tempo por Severidade', fontsize=12)
         plt.xlabel('Tempo (s)')
-        plt.yticks([])  # Hide y-axis as it's just for visualization
+        plt.ylabel('Contagem de Avisos')  # Improved y-axis label
         plt.legend()
         plt.grid(True, alpha=0.3)
 

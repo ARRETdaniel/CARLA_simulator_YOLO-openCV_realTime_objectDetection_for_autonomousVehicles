@@ -1,22 +1,22 @@
-avg_detection_time,0.06945368313398517
-max_detection_time,0.29345273971557617
-min_detection_time,0.005705356597900391
-avg_fps,14.398084520166773
-total_detections,766
-avg_detections_per_frame,0.5022950819672131
-detection_classes_distribution,{"2": 592, "13": 27, "3": 1, "11": 124, "7": 18, "9": 4}
-avg_confidence,0.6757134911908182
-total_warnings,738
-warning_types_distribution,{"car": 592, "stop sign": 124, "truck": 18, "traffic light": 4}
-warning_severities,{"HIGH": 124, "MEDIUM": 4, "LOW": 610}
-total_runtime_seconds,418.317258
-class_precision,{"2": 1.0, "3": 1.0, "7": 1.0, "9": 1.0, "11": 1.0, "13": 1.0}
-class_avg_confidence,{"2": 0.69247428589576, "13": 0.5003022800792347, "3": 0.8614991307258606, "11": 0.6787235036026686, "7": 0.36352478464444477, "9": 0.4698440879583359}
+avg_detection_time,0.06961644002394497
+max_detection_time,0.34737491607666016
+min_detection_time,0.00600886344909668
+avg_fps,14.364423111208277
+total_detections,560
+avg_detections_per_frame,0.4114621601763409
+detection_classes_distribution,{"2": 440, "13": 19, "11": 76, "7": 20, "9": 5}
+avg_confidence,0.6446566639734166
+total_warnings,541
+warning_types_distribution,{"car": 440, "stop sign": 76, "truck": 20, "traffic light": 5}
+warning_severities,{"HIGH": 76, "MEDIUM": 5, "LOW": 460}
+total_runtime_seconds,410.14803
+class_precision,{"2": 1.0, "7": 1.0, "9": 1.0, "11": 1.0, "13": 1.0}
+class_avg_confidence,{"2": 0.6539092141796242, "13": 0.4565668617779354, "11": 0.692317698903652, "7": 0.35950778126716615, "9": 0.43609037399291994}
 distance_detection_rates,{"pr\u00f3ximo": 1.0, "m\u00e9dio": 1.0, "distante": 1.0}
-detection_time_confidence_interval,[0.06659176301785741, 0.07231560325011294]
+detection_time_confidence_interval,[0.06646874536394393, 0.07276413468394602]
 detection_time_confidence_level,0.95
-detection_time_ci_lower,0.06650533879389528
-detection_time_ci_upper,0.07227528321938437
-detection_time_hypothesis_test,{"null_hypothesis": "Average detection time = 0.1s", "alternative": "Average detection time \u2260 0.1s", "t_statistic": -20.93603744472286, "p_value": 9.532586497252256e-86, "significant": true, "conclusion": "Reject null hypothesis"}
+detection_time_ci_lower,0.06655806622725914
+detection_time_ci_upper,0.07283724554315549
+detection_time_hypothesis_test,{"null_hypothesis": "Average detection time = 0.1s", "alternative": "Average detection time \u2260 0.1s", "t_statistic": -18.93567663712265, "p_value": 3.704069814073734e-71, "significant": true, "conclusion": "Reject null hypothesis"}
 statistical_power,1.0
-confidence_response_correlation,{"correlation_coefficient": -0.1569633086209843, "p_value": 0.04472883817371193, "significant": true, "interpretation": "Weak negative correlation"}
+confidence_response_correlation,{"correlation_coefficient": NaN, "p_value": NaN, "significant": false, "interpretation": "Strong positive correlation"}
