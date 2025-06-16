@@ -1,5 +1,9 @@
 
-update banchmark to use YOLO v8 and
+
+Add modificattion in METODOS about the useof python 3.12 to use cuda and yolo v8
+
+
+done:update banchmark to use YOLO v8 and
 
 OLD:
 1. try to make a decision ralated to object idetified:
@@ -21,26 +25,4 @@ town2 seems to be a good city for tests
 I still dont have the feature from YOLO.py , warnings (car ahead, stop sign), cmd output with more infos related to the model times
 
 
-Do a deep analyse and fix the errors:
-
-Reached the end of path. Writing to controller_output...
-Generating performance metrics summary...
-ERROR: Unexpected error during execution: No module named 'statsmodels'
-INFO: Attempting to recover in 5 seconds...
-Traceback (most recent call last):
-  File "module_7.py", line 1702, in main
-    exec_waypoint_nav_demo(args)
-  File "module_7.py", line 1629, in exec_waypoint_nav_demo
-    metrics.generate_summary()
-  File "C:\Users\danie\Documents\Documents\CURSOS\Self-Driving_Cars_Specialization\CarlaSimulator\PythonClient\FinalProject\performance_metrics.py", line 811, in generate_summary
-    from statsmodels.stats.power import TTestPower
-ModuleNotFoundError: No module named 'statsmodels'
-Cleaning up resources...
-Traceback (most recent call last):
-  File "module_7.py", line 1728, in <module>
-    main()
-  File "module_7.py", line 1723, in main
-    cleanup()
-NameError: name 'cleanup' is not defined
-
-C:\Users\danie\Documents\Documents\CURSOS\Self-Driving_Cars_Specialization\CarlaSimulator\PythonClient\FinalProject>
+Do a deep analyse
