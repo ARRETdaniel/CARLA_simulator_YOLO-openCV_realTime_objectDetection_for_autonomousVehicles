@@ -1,0 +1,24 @@
+avg_detection_time,0.052356632221226086
+max_detection_time,0.288067102432251
+min_detection_time,0.0047376155853271484
+avg_fps,19.099777001978108
+total_detections,790
+avg_detections_per_frame,0.430752453653217
+detection_classes_distribution,{"2": 683, "3": 2, "11": 105}
+avg_confidence,0.7012392382455778
+total_warnings,788
+warning_types_distribution,{"car": 683, "stop sign": 105}
+warning_severities,{"HIGH": 105, "MEDIUM": 0, "LOW": 683}
+total_runtime_seconds,356.009567
+class_precision,{"11": 1.0, "2": 1.0, "3": 1.0}
+class_avg_confidence,{"2": 0.6944767974567971, "3": 0.8312463164329529, "11": 0.745234494589492}
+distance_detection_rates,{"pr\u00f3ximo": 1.0, "m\u00e9dio": 1.0, "distante": 1.0}
+current_weather_id,13
+current_weather_name,"HARDRAINSUNSET"
+detection_time_confidence_interval,[0.04998053004159594, 0.054732734400856235]
+detection_time_confidence_level,0.95
+detection_time_ci_lower,0.04999614216899144
+detection_time_ci_upper,0.05463099609674518
+detection_time_hypothesis_test,{"null_hypothesis": "Average detection time = 0.1s", "alternative": "Average detection time \u2260 0.1s", "t_statistic": -39.32532275232866, "p_value": 8.65240610512361e-246, "significant": true, "conclusion": "Reject null hypothesis"}
+statistical_power,1.0
+confidence_response_correlation,{"correlation_coefficient": NaN, "p_value": NaN, "significant": false, "interpretation": "Strong positive correlation"}

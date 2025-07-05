@@ -1,3 +1,5 @@
+import sys
+sys.path.append(r'C:\Users\danie\Documents\Documents\CURSOS\Self-Driving_Cars_Specialization\CarlaSimulator\PythonClient\FinalProject')
 from results_reporter import ResultsReporter
 import os
 import shutil

@@ -1,0 +1,22 @@
+avg_detection_time,0.052939438025590695
+max_detection_time,0.34210729598999023
+min_detection_time,0.0
+avg_fps,18.889509169262514
+total_detections,922
+avg_detections_per_frame,0.5035499726925178
+detection_classes_distribution,{"2": 791, "13": 19, "3": 2, "11": 106, "7": 2, "9": 2}
+avg_confidence,0.710360046678148
+total_warnings,901
+warning_types_distribution,{"car": 791, "stop sign": 106, "truck": 2, "traffic light": 2}
+warning_severities,{"HIGH": 106, "MEDIUM": 2, "LOW": 793}
+total_runtime_seconds,360.606233
+class_precision,{"2": 1.0, "3": 1.0, "7": 1.0, "9": 1.0, "11": 1.0, "13": 1.0}
+class_avg_confidence,{"2": 0.7119924688309092, "13": 0.5777217008565602, "3": 0.8614991307258606, "11": 0.7272575570727294, "7": 0.4494556486606598, "9": 0.5389986336231232}
+distance_detection_rates,{"pr\u00f3ximo": 1.0, "m\u00e9dio": 1.0, "distante": 1.0}
+detection_time_confidence_interval,[0.050540757652225994, 0.055338118398955395]
+detection_time_confidence_level,0.95
+detection_time_ci_lower,0.05050138135479813
+detection_time_ci_upper,0.05533614606560416
+detection_time_hypothesis_test,{"null_hypothesis": "Average detection time = 0.1s", "alternative": "Average detection time \u2260 0.1s", "t_statistic": -38.47867892794455, "p_value": 7.449980276655615e-238, "significant": true, "conclusion": "Reject null hypothesis"}
+statistical_power,1.0
+confidence_response_correlation,{"correlation_coefficient": 0.024043888030456248, "p_value": 0.7884525833729191, "significant": false, "interpretation": "Weak positive correlation"}

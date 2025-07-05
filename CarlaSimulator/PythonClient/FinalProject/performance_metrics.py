@@ -1,3 +1,6 @@
+# Author: Daniel Terra Gomes
+# Date: Jun 30, 2025
+
 import os
 import csv
 import json
@@ -180,6 +183,28 @@ class PerformanceMetrics:
             writer.writerow(['timestamp', 'warning_type', 'warning_severity',
                             'related_detection_time', 'time_to_warning', 'vehicle_speed'])
 
+
+    def _filter_fps_outliers(self, fps_values):
+        """Filter extreme outliers from FPS data before visualization"""
+        if not fps_values or len(fps_values) < 5:
+            return fps_values
+
+        # Calculate median and median absolute deviation (more robust than mean/std)
+        median_fps = np.median(fps_values)
+        mad = np.median(np.abs(fps_values - median_fps))
+
+        # Use a threshold of 10 MAD - extremely conservative to only remove true outliers
+        threshold = 10 * mad
+
+        # Cap values rather than removing them
+        capped_values = [min(v, median_fps + threshold) for v in fps_values]
+
+        # Never remove more than 1% of data
+        if sum(1 for i, v in enumerate(capped_values) if v != fps_values[i]) > len(fps_values) * 0.01:
+            return fps_values
+
+        return capped_values
+
     def safe_pearsonr(self, x, y):
         """Calculate Pearson correlation with safety checks for constant inputs"""
         from scipy import stats
@@ -198,7 +223,7 @@ class PerformanceMetrics:
         """Update the current weather condition being tracked"""
         if weather_id in self.weather_conditions:
             self.current_weather_id = weather_id
-            print(f"Weather condition updated to: {self.weather_conditions[weather_id]}")
+            print(f"Weather condition updated to: {self.weather_conditions[weather_id]} (ID: {weather_id})")
 
             # Initialize performance metrics for this weather if not already done
             if weather_id not in self.weather_performance:
@@ -210,17 +235,33 @@ class PerformanceMetrics:
                     'detection_times': []
                 }
 
-            # Log weather change
+            # Log the weather update to the environment metrics file
+            elapsed_time = time.time() - self.last_frame_time
+
             with open(self.environment_log_file, 'a', encoding='latin-1') as f:
                 writer = csv.writer(f)
-                timestamp = (datetime.now() - self.init_time).total_seconds()
+                if f.tell() == 0:  # If file is empty, write the header
+                    writer.writerow(['timestamp', 'weather_id', 'weather_name', 'detection_count', 'avg_confidence', 'avg_detection_time'])
+
+                # Calculate averages if data exists, otherwise use zeros
+                avg_confidence = 0
+                avg_detection_time = 0
+                detection_count = 0
+
+                if self.confidence_scores:
+                    avg_confidence = sum(self.confidence_scores) / len(self.confidence_scores)
+                if self.detection_times:
+                    avg_detection_time = sum(self.detection_times) / len(self.detection_times)
+                if self.detection_counts:
+                    detection_count = sum(self.detection_counts)
+
                 writer.writerow([
-                    timestamp,
+                    elapsed_time,
                     weather_id,
                     self.weather_conditions[weather_id],
-                    self.weather_performance[weather_id]['detections'],
-                    np.mean(self.weather_performance[weather_id]['confidence_scores']) if self.weather_performance[weather_id]['confidence_scores'] else 0,
-                    np.mean(self.weather_performance[weather_id]['detection_times']) if self.weather_performance[weather_id]['detection_times'] else 0
+                    detection_count,
+                    avg_confidence,
+                    avg_detection_time
                 ])
 
     # method to record sign detections
@@ -415,6 +456,10 @@ class PerformanceMetrics:
 
             for i in idx_list:
                 class_id = classids[i]
+
+                if class_id == 13:  # Bench class
+                    continue
+
                 if class_id in class_dist:
                     class_dist[class_id] += 1
                 else:
@@ -425,6 +470,27 @@ class PerformanceMetrics:
                     self.detection_classes[class_id] += 1
                 else:
                     self.detection_classes[class_id] = 1
+
+                #  traffic sign confidence validation code here
+                if i < len(classids) and i < len(confidences):
+                    conf = confidences[i]
+
+                    # Only record traffic sign confidence when actually present
+                    # (Add a minimum confidence threshold and size check)
+                    if class_id == 11:  # Stop sign
+                        box = boxes[i] if i < len(boxes) else None
+                        if box and conf > 0.4:
+                            # Calculate relative size
+                            w, h = box[2], box[3]
+                            box_area = w * h
+                            frame_area = 640 * 480  # Assuming standard frame size, adjust if different
+
+                            # Only count if reasonable size (not tiny noise)
+                            if box_area > frame_area * 0.001:
+                                # Now record the confidence in class-specific tracking
+                                if class_id not in self.class_confidence_by_id:
+                                    self.class_confidence_by_id[class_id] = []
+                                self.class_confidence_by_id[class_id].append(conf)
 
                 # NEW: Update class confidence scores
                 if class_id not in self.class_confidence_by_id:
@@ -716,6 +782,8 @@ class PerformanceMetrics:
         Returns:
             dict: Summary statistics
         """
+        print(f"Generating summary statistics. Current weather ID: {self.current_weather_id}")
+
         if not self.detection_counts and self.timestamps:
             self.detection_counts = [0] * len(self.timestamps)
 
@@ -741,7 +809,10 @@ class PerformanceMetrics:
             'class_avg_confidence': {str(cls): np.mean(scores) if scores else 0
                                     for cls, scores in self.class_confidence_by_id.items()},
             'distance_detection_rates': {band: data['detections'] / max(data['total_objects'], 1)
-                                       for band, data in self.distance_bands.items()}
+                                       for band, data in self.distance_bands.items()},
+                    # Add weather information to the summary
+            'current_weather_id': self.current_weather_id,
+            'current_weather_name': self.weather_conditions.get(self.current_weather_id, "Unknown")
         }
 
         # Add statistical validation
@@ -935,7 +1006,7 @@ class PerformanceMetrics:
                         return bool(obj)
                     return json.JSONEncoder.default(self, obj)
 
-            with open(os.path.join(self.output_dir, 'summary_stats.csv'), 'w') as f:
+            with open(os.path.join(self.output_dir, 'summary_stats.csv'), 'w', encoding='latin-1') as f:
                 for key, value in summary.items():
                     f.write(f"{key},{json.dumps(value, cls=NumpyEncoder)}\n")
 
@@ -962,18 +1033,25 @@ class PerformanceMetrics:
         axs[0, 0].grid(True)
 
         # 2. Number of Detections Over Time
-
-            # Ensure detection_counts matches timestamps length
         if len(self.detection_counts) != len(self.timestamps):
-            # If detection_counts is empty or doesn't match, create a placeholder
-            self.detection_counts = [0] * len(self.timestamps)
-            print("Warning: detection_counts didn't match timestamps length. Using zeros.")
+            # Ensure arrays match
+            min_len = min(len(self.detection_counts), len(self.timestamps))
+            detection_counts_plot = self.detection_counts[:min_len]
+            timestamps_plot = self.timestamps[:min_len]
+        else:
+            detection_counts_plot = self.detection_counts
+            timestamps_plot = self.timestamps
 
-        axs[0, 1].plot(self.timestamps, self.detection_counts)
+        axs[0, 1].plot(timestamps_plot, detection_counts_plot)
         axs[0, 1].set_title('Número de Detecções vs Tempo')
         axs[0, 1].set_xlabel('Tempo (s)')
         axs[0, 1].set_ylabel('Contagem')
         axs[0, 1].grid(True)
+
+        # For the FPS visualization (wherever it happens), first filter the values:
+        if hasattr(self, 'fps_history') and self.fps_history:
+            filtered_fps = self._filter_fps_outliers(self.fps_history)
+            # Then use filtered_fps for plotting
 
         # 3. Class Distribution Pie Chart
         if self.detection_classes:
@@ -4122,15 +4200,20 @@ class PerformanceMetrics:
             has_real_fps_data = True
 
         if has_real_fps_data:
+            #filtered_fps = self._filter_fps_outliers(fps_values)
             # Raw FPS
             plt.plot(time_points, fps_values, 'o', alpha=0.4, color='gray', label='FPS Instantâneo')
+            #plt.plot(time_points, filtered_fps , 'o', alpha=0.4, color='gray', label='FPS Instantâneo')
 
             # Smoothed FPS
+            #if len(filtered_fps ) > 5:
             if len(fps_values) > 5:
                 # Apply moving average smoothing
+                #window_size = min(5, len(filtered_fps ) // 2)
                 window_size = min(5, len(fps_values) // 2)
                 if window_size > 0:
                     smoothed_fps = np.convolve(fps_values, np.ones(window_size)/window_size, mode='valid')
+                   # smoothed_fps = np.convolve(filtered_fps , np.ones(window_size)/window_size, mode='valid')
                     smoothed_time = time_points[window_size-1:]
                     plt.plot(smoothed_time, smoothed_fps, '-', linewidth=2, color='blue',
                             label='FPS Médio (Janela Móvel)')

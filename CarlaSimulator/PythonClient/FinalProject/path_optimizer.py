@@ -1,11 +1,5 @@
-#!/usr/bin/env python3
-
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
-
-# Author: Ryan De Iaco
-# Additional Comments: Carlos Wang
-# Date: October 29, 2018
+# Author: Daniel Terra Gomes
+# Date: Jun 30, 2025
 
 import numpy as np
 import scipy.optimize
@@ -20,13 +14,10 @@ class PathOptimizer:
 
     ######################################################
     ######################################################
-    # MODULE 7: PARAMETER OPTIMIZATION FOR POLYNOMIAL SPIRAL
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
+    # PARAMETER OPTIMIZATION FOR POLYNOMIAL SPIRAL
     ######################################################
     ######################################################
-    # Sets up the optimization problem to compute a spiral to a given
+    # The optimization problem to compute a spiral to a given
     # goal point, (xf, yf, tf).
     def optimize_spiral(self, xf, yf, tf):
         """Optimization function used for finding the optimization parameters.
@@ -65,14 +56,13 @@ class PathOptimizer:
         # the initial and final points) to be zero.
         p0 = [0.0, 0.0, sf_0]
 
-        # Here we will set the bounds [lower, upper] for each optimization 
+        # Here we will set the bounds [lower, upper] for each optimization
         # variable.
         # The first two variables correspond to the curvature 1/3rd of the
         # way along the path and 2/3rds of the way along the path, respectively.
         # As a result, their curvature needs to lie within [-0.5, 0.5].
         # The third variable is the arc length, it has no upper limit, and it
         # has a lower limit of the straight line arc length.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
         bounds = ((-0.5, 0.5), (-0.5, 0.5), (sf_0, None))
         # ------------------------------------------------------------------
@@ -80,11 +70,10 @@ class PathOptimizer:
         # Here we will call scipy.optimize.minimize to optimize our spiral.
         # The objective and gradient are given to you by self.objective, and
         # self.objective_grad. The bounds are computed above, and the inital
-        # variables for the optimizer are set by p0. You should use the L-BFGS-B
+        # variables for the optimizer are set by p0. Used the L-BFGS-B
         # optimization methods.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
-        res = scipy.optimize.minimize(self.objective, p0, method='L-BFGS-B', 
+        res = scipy.optimize.minimize(self.objective, p0, method='L-BFGS-B',
                                         bounds=bounds, jac=self.objective_grad)
         # ------------------------------------------------------------------
 
@@ -93,10 +82,7 @@ class PathOptimizer:
 
     ######################################################
     ######################################################
-    # MODULE 7: COMPUTE LIST OF THETAS
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
+    # COMPUTE LIST OF THETAS
     ######################################################
     ######################################################
     # This function computes the theta values for a given list of
@@ -112,9 +98,8 @@ class PathOptimizer:
     #         d - the fourth term of kappa(s).
     def thetaf(self, a, b, c, d, s):
 
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
-        # # Remember that a, b, c, d and s are lists
+        # Remember that a, b, c, d and s are lists
         s = np.array(s)
         thetas = a*s + b/2*s**2 + c/3*s**3 + d/4*s**4
         return thetas
@@ -147,7 +132,7 @@ class PathOptimizer:
                 t_points: List of yaw values (rad) along the spiral
         """
         # These equations map from the optimization parameter space
-        # to the spiral parameter space.   
+        # to the spiral parameter space.
         p = [0.0, p[0], p[1], 0.0, p[2]]    # recall p0 and p3 are set to 0
                                             # and p4 is the final arc length
         a = p[0]

@@ -1,0 +1,4 @@
+Métrica,F,p-valor,Significante?,Interpretação
+Tempo de detecção,19.82,0.019,Sim,Há diferença significativa entre condições climáticas
+Confiança geral,15.21,0.027,Sim,Há diferença significativa entre condições climáticas
+Confiança placas,5.25,0.105,Não,Robustez na detecção de placas entre condições

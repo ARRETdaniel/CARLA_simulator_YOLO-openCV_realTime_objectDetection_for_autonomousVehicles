@@ -27,3 +27,4 @@ CURSOS
 Motion Planning for Self-Driving Cars
 *.pt
 __pycache__
+*.mp4

@@ -1,0 +1,5 @@
+2025-06-22 18:54:20.549587: NOTICE: Using example data for feedback effectiveness - Tempo de
+Exibição visualization due to insufficient real data (Based on: Based on: Lee, J. D., et al. (2017). Human-Automation Interaction Design Guidelines for Driver-Vehicle Interfaces.)
+2025-06-22 18:54:20.669833: NOTICE: Using example data for autonomous behavior chart visualization due to insufficient real data (Based on: Based on expected system performance in simulation environment)
+2025-06-22 18:54:23.490718: NOTICE: Using example data for feedback effectiveness analysis visualization due to insufficient real data (Based on: Lee, J. D., et al. (2017). Human-Automation Interaction Design Guidelines for Driver-Vehicle Interfaces.)
+2025-06-22 18:54:25.858620: NOTICE: Using example data for class precision metrics visualization due to insufficient real data (Based on: Based on typical YOLO detector performance patterns)

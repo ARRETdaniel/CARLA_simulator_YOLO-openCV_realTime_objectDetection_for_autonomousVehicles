@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# Date: Jun 30, 2025
 
 """
 2D Controller Class to be used for the CARLA waypoint follower demo.
@@ -129,8 +129,51 @@ class Controller2D(object):
         self.vars.create_var('v_error_prev', 0.0)
         self.vars.create_var('v_error_integral', 0.0)
 
+        '''
+
+        # Throttle to engine torque
+        a_0 = 400
+        a_1 = 0.1
+        a_2 = -0.0002
+
+        # Gear ratio, effective radius, mass + inertia
+        GR = 0.35
+        r_e = 0.3
+        J_e = 10
+        m = 2000
+        g = 9.81
+
+        # Aerodynamic and friction coefficients
+        c_a = 1.36
+        c_r1 = 0.01
+
+        #PID Gains
+        k_p = 1 / 1.13
+        k_i = k_p / 10
+        k_d = k_p * 0.1  # Adjust the multiplier as needed
+
+        #latteral controller gains
+        k = 2
+        k_s = 10
+        '''
+
         # Skip the first frame to store previous values properly
         if self._start_control_loop:
+
+            '''
+            # calculate F_load and T_e respectively
+            # F_load calculations
+            f_aero = c_a * (v_desired ** 2)
+            r_x = c_r1 * v_desired
+            f_g = m * g * np.sin(0)
+            f_load = f_aero + r_x + f_g
+
+            # T_e calculation (assuming t_e = t_load)
+            t_e = GR * r_e * f_load
+
+            # calculate engine speed w_e
+            w_e = v_desired / (GR * r_e)
+            '''
 
             self.vars.v_error           = v_desired - v
             self.vars.v_error_integral += self.vars.v_error * \

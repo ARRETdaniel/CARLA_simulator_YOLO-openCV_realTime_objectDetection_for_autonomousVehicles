@@ -1,11 +1,4 @@
-#!/usr/bin/env python3
-
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
-
-# Author: Ryan De Iaco
-# Additional Comments: Carlos Wang
-# Date: October 29, 2018
+# Date: Jun 30, 2025
 
 import numpy as np
 import scipy.spatial
@@ -19,10 +12,7 @@ class CollisionChecker:
 
     ######################################################
     ######################################################
-    # MODULE 7: CHECKING FOR COLLISSIONS
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
+    # CHECKING FOR COLLISSIONS
     ######################################################
     ######################################################
     # Takes in a set of paths and obstacles, and returns an array
@@ -79,7 +69,6 @@ class CollisionChecker:
                 # point_x is given by path[0][j], and point _y is given by
                 # path[1][j].
                 circle_locations = np.zeros((len(self._circle_offsets), 2))
-                # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
                 circle_locations[:, 0] = path[0][j] \
                                     + self._circle_offsets*np.array(np.cos(path[2][j]))
@@ -113,10 +102,7 @@ class CollisionChecker:
 
     ######################################################
     ######################################################
-    # MODULE 7: SELECTING THE BEST PATH INDEX
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary variables to return. Then follow the TODOs
-    #   (top-down) and use the surrounding comments as a guide.
+    # SELECTING THE BEST PATH INDEX
     ######################################################
     ######################################################
     # Selects the best path in the path set, according to how closely
@@ -161,9 +147,7 @@ class CollisionChecker:
             if collision_check_array[i]:
                 # Compute the "distance from centerline" score.
                 # The centerline goal is given by goal_state.
-                # The exact choice of objective function is up to you.
                 # A lower score implies a more suitable path.
-                # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
                 score = np.linalg.norm(np.array([paths[i][0][-1] - goal_state[0],
                                             paths[i][1][-1] - goal_state[1]]))
@@ -171,13 +155,11 @@ class CollisionChecker:
 
                 # Compute the "proximity to other colliding paths" score and
                 # add it to the "distance from centerline" score.
-                # The exact choice of objective function is up to you.
                 for j in range(len(paths)):
                     if j == i:
                         continue
                     else:
                         if not collision_check_array[j]:
-                            # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                             # --------------------------------------------------
                             score += self._weight * np.linalg.norm(np.array([paths[i][0][-1] - paths[j][0][-1],
                                             paths[i][1][-1] - paths[j][1][-1]]))

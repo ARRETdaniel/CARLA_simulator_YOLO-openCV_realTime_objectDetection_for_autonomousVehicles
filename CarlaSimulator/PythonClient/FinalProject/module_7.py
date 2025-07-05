@@ -1,12 +1,9 @@
-#!/usr/bin/env python3
-
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
+# Date: Jun 30, 2025
 
 """
-CARLA waypoint follower assessment client script.
+CARLA waypoint.
 
-A controller assessment to follow a given trajectory, where the trajectory
+A controller to follow a given trajectory, where the trajectory
 can be defined using way-points.
 
 STARTING in a moment...
@@ -139,7 +136,11 @@ WEATHERID = {
     "HARDRAINSUNSET": 13,
     "SOFTRAINSUNSET": 14,
 }
-SIMWEATHER = WEATHERID["CLEARNOON"]     # set simulation weather
+
+#SIMWEATHER = WEATHERID["HARDRAINNOON"]     # set simulation weather
+SIMWEATHER = WEATHERID["HARDRAINSUNSET"]     # set simulation weather
+#SIMWEATHER = WEATHERID["CLEARNOON"]     # set simulation weather
+
 # change the start position. The Carla UE must be open with
 #  no parameters related to the map.
 PLAYER_START_INDEX = 1      # spawn index for player (keep to 1)
@@ -508,7 +509,6 @@ def get_parkedcar_box_pts(file_path):
 
     return parkedcar_box_pts
 
-# TODO implemente get and set
 def get_stop_sign(file_path):
     #############################################
     # Load stop sign and parked vehicle parameters
@@ -614,8 +614,7 @@ def exec_waypoint_nav_demo(args):
         threaded_detector = ThreadedDetector(yolo_detector)
 
         # weather
-        current_weather = SIMWEATHER  # This is already in code
-        metrics.update_weather_condition(current_weather)
+        metrics.update_weather_condition(SIMWEATHER)  # SIMWEATHER should be 6 for HARDRAINNOON
 
         # Initialize frame counter for FPS display
         frame_count = 0
@@ -1428,19 +1427,6 @@ def exec_waypoint_nav_demo(args):
             # to be operating at a frequency that is a division to the
             # simulation frequency.
             if frame % LP_FREQUENCY_DIVISOR == 0:
-                # TODO Once you have completed the prerequisite functions of each of these
-                # lines, you can uncomment the code below the dashed line to run the planner.
-                # Note that functions lower in this block often require outputs from the functions
-                # earlier in this block, so it may be easier to implement those first to
-                # get a more intuitive flow of the planner.
-                # In addition, some of these functions have already been implemented for you,
-                # but it is useful for you to understand what each function is doing.
-                # Before you uncomment a function, please take the time to take a look at
-                # it and understand what is going on. It will also help inform you on the
-                # flow of the planner, which in turn will help you implement the functions
-                # flagged for you in the TODO's.
-
-                # TODO: Uncomment each code block between the dashed lines to run the planner.
                 # --------------------------------------------------------------
                 #  # Compute open loop speed estimate.
                 open_loop_speed = lp._velocity_planner.get_open_loop_speed(current_timestamp - prev_timestamp)
@@ -1649,6 +1635,7 @@ def exec_waypoint_nav_demo(args):
         write_collisioncount_file(collided_flag_history)
 
     print("Generating performance metrics summary...")
+    metrics.update_weather_condition(SIMWEATHER)  # SIMWEATHER should be 6 for HARDRAINNOON
     metrics.generate_summary()
     metrics.visualize_metrics()
 

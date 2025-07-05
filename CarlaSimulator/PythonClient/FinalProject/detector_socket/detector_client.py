@@ -1,4 +1,7 @@
+# Author: Daniel Terra Gomes
+# Date: Jun 30, 2025
 # detector_client.py (to be imported in module_7.py)
+
 import socket
 import time
 import numpy as np
@@ -81,7 +84,7 @@ class DetectionClient:
             7: 'truck',            # trucks
             9: 'traffic light',    # traffic lights
             11: 'stop sign',       # stop signs
-            13: 'bench',           # roadside objects
+#            13: 'bench',           # roadside objects
             16: 'dog',             # animals on road
             17: 'horse',           # animals on road
             18: 'sheep',           # animals on road
@@ -562,7 +565,8 @@ class DetectionClient:
             conf = confidences[i]
 
             # Skip irrelevant classes or low confidence
-            if cls_id not in self.driving_relevant_classes or conf < 0.25:
+            #if cls_id not in self.driving_relevant_classes or conf < 0.25:
+            if cls_id not in self.driving_relevant_classes or conf < 0.4:
                 continue
 
             label = self.labels[cls_id] if cls_id < len(self.labels) else "unknown"

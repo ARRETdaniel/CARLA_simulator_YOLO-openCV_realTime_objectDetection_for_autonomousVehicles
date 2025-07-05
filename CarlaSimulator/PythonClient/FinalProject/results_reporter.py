@@ -1,3 +1,6 @@
+# Author: Daniel Terra Gomes
+# Date: Jun 30, 2025
+
 import os
 import csv
 import json

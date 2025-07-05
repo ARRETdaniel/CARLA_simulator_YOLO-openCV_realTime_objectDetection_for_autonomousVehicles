@@ -1,3 +1,6 @@
+# Author: Daniel Terra Gomes
+# Date: Jun 30, 2025
+
 import threading
 from queue import Queue, Empty
 import numpy as np
@@ -202,12 +205,18 @@ class ThreadedDetector:
             # Count warnings by type
             for i in idxs:
                 class_id = classids[i]
+                # Validate confidence before using it
+                confidence = confidences[i] if i < len(confidences) else 0
 
                 # Get class name, handling potential index errors
                 if class_id < len(self.detector.labels):
                     class_name = self.detector.labels[class_id]
                 else:
                     class_name = f"unknown-{class_id}"
+
+                # Skip benches (class 13) to avoid misidentification as traffic signs
+                if class_id == 13:  # Bench class
+                    continue
 
                 # Update warning counts for relevant classes
                 if class_name in ['person', 'car', 'truck', 'bus', 'stop sign', 'traffic light']:

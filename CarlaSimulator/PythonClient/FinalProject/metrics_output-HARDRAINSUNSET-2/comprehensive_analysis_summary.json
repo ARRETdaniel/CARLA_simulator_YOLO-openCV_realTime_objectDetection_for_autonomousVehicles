@@ -1,0 +1,282 @@
+{
+    "reaction_time_analysis": {
+        "system_reaction_time": 0.0,
+        "human_attentive_reaction_time": 1.2,
+        "improvement_percentage": 100.0
+    },
+    "safety_distance_analysis": {
+        "speeds": [
+            30,
+            50,
+            80,
+            100
+        ],
+        "human_distances": [
+            14.960317460317462,
+            30.445326278659614,
+            61.9400352733686,
+            88.44797178130511
+        ],
+        "system_distances": [
+            4.960317460317461,
+            13.778659611992946,
+            35.273368606701936,
+            55.114638447971785
+        ],
+        "distance_saved": [
+            10.0,
+            16.666666666666668,
+            26.666666666666664,
+            33.33333333333333
+        ],
+        "collision_reduction": [
+            90.0,
+            90.0,
+            90.0,
+            90.0
+        ]
+    },
+    "sign_reliability_analysis": {
+        "reliability_matrix": [
+            [
+                0.745234494589492,
+                0.745234494589492,
+                0.745234494589492,
+                0.745234494589492
+            ],
+            [
+                0.9,
+                0.85,
+                0.8,
+                0.7
+            ],
+            [
+                0.9,
+                0.85,
+                0.8,
+                0.7
+            ]
+        ],
+        "mean_reliability": [
+            0.745234494589492,
+            0.8125,
+            0.8125
+        ],
+        "std_reliability": [
+            0.0,
+            0.07395099728874523,
+            0.07395099728874523
+        ],
+        "scenarios_above_threshold": 50.0
+    },
+    "feedback_effectiveness_analysis": {
+        "feedback_aspects": [
+            "Tempo de Exibi\u00e7\u00e3o",
+            "Visibilidade",
+            "Compreensibilidade",
+            "Prioriza\u00e7\u00e3o de Informa\u00e7\u00e3o"
+        ],
+        "aspect_scores": [
+            0.85,
+            0.92,
+            0.88,
+            0.9
+        ],
+        "overall_effectiveness": 0.885,
+        "comparison_systems": [
+            "Sistema Proposto",
+            "Comercial A",
+            "Comercial B",
+            "Prot\u00f3tipo Acad\u00eamico"
+        ],
+        "comparison_scores": [
+            0.885,
+            0.75,
+            0.82,
+            0.7
+        ]
+    },
+    "integrated_performance_safety_analysis": {
+        "current_fps": 19.099777001978108,
+        "fps_distribution_mean": 18.684488102595317,
+        "fps_distribution_std": 10.665915077890027,
+        "component_times": [
+            10,
+            30,
+            5,
+            15,
+            20
+        ],
+        "total_response_time": 80,
+        "scenarios": [
+            "Aproxima\u00e7\u00e3o\nde Cruzamento",
+            "Detec\u00e7\u00e3o de\nPlaca de Pare",
+            "Mudan\u00e7a de\nLimite de Velocidade",
+            "Resposta a\nObst\u00e1culo S\u00fabito"
+        ],
+        "human_response_times": [
+            1.8,
+            1.2,
+            1.5,
+            2.0
+        ],
+        "system_response_times": [
+            0.3,
+            0.35,
+            0.4,
+            0.45
+        ],
+        "distance_saved": [
+            20.833333333333336,
+            11.805555555555555,
+            15.277777777777779,
+            21.52777777777778
+        ]
+    },
+    "human_comparison_analysis": {
+        "detection_comparison": {
+            "categories": [
+                "Placas de Pare",
+                "Limites de\nVelocidade",
+                "Todas as\nPlacas"
+            ],
+            "human_rates": [
+                0.75,
+                0.68,
+                0.72
+            ],
+            "system_rates": [
+                1.0,
+                0.92,
+                1.0
+            ]
+        },
+        "response_time_comparison": {
+            "categories": [
+                "Critical",
+                "Normal"
+            ],
+            "human_times": [
+                1.8,
+                1.2
+            ],
+            "system_times": [
+                0.0,
+                0.0
+            ]
+        },
+        "reliability_comparison": {
+            "conditions": [
+                "Dia Claro",
+                "Entardecer",
+                "Chuva",
+                "Neblina"
+            ],
+            "human_reliability": [
+                0.85,
+                0.55,
+                0.6,
+                0.4
+            ],
+            "system_reliability": [
+                0.95,
+                0.85,
+                0.8,
+                0.75
+            ]
+        },
+        "safety_metrics": {
+            "metrics": [
+                "Antecipa\u00e7\u00e3o de\nRiscos",
+                "Conformidade com\nLimites",
+                "Tempo de Rea\u00e7\u00e3o\nAdequado",
+                "Seguran\u00e7a\nGeral"
+            ],
+            "human_scores": [
+                65,
+                70,
+                60,
+                65
+            ],
+            "system_scores": [
+                90,
+                95,
+                97.69628360242307,
+                94
+            ]
+        }
+    },
+    "distance_metrics_analysis": {
+        "distance_bands": [
+            "pr\u00f3ximo",
+            "m\u00e9dio",
+            "distante"
+        ],
+        "detection_counts": [
+            6,
+            90,
+            694
+        ],
+        "total_objects": [
+            6,
+            90,
+            694
+        ],
+        "detection_rates": [
+            1.0,
+            1.0,
+            1.0
+        ]
+    },
+    "class_precision_analysis": {
+        "class_ids": [
+            0,
+            2,
+            9,
+            11
+        ],
+        "class_names": [
+            "Pessoa",
+            "Carro",
+            "Sem\u00e1foro",
+            "Placa de Pare"
+        ],
+        "precisions": [
+            0.89,
+            0.94,
+            0.87,
+            0.91
+        ],
+        "confidences": [
+            0.65,
+            0.76,
+            0.44,
+            0.69
+        ],
+        "detection_counts": [
+            42,
+            156,
+            23,
+            18
+        ],
+        "confidence_ranges": [
+            [
+                0.51,
+                0.85
+            ],
+            [
+                0.6,
+                0.92
+            ],
+            [
+                0.32,
+                0.78
+            ],
+            [
+                0.58,
+                0.88
+            ]
+        ],
+        "weather_condition": "HARDRAINSUNSET"
+    }
+}

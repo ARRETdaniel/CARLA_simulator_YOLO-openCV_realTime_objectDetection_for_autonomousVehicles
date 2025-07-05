@@ -1,4 +1,7 @@
+# Author: Daniel Terra Gomes
+# Date: Jun 30, 2025
 # detector_server.py (Python 3.12)
+
 import socket
 import json
 import numpy as np
@@ -16,7 +19,7 @@ import torch
 import signal
 
 class DetectionServer:
-    def __init__(self, host="localhost", port=5555, model_type="yolov8s.pt", confidence=0.4,
+    def __init__(self, host="localhost", port=5555, model_type="yolov8s.pt", confidence=0.55,
              batch_size=4, batch_timeout=0.05):
         self.host = host
         self.port = port
@@ -100,7 +103,7 @@ class DetectionServer:
             7: 'truck',            # trucks
             9: 'traffic light',    # traffic lights
             11: 'stop sign',       # stop signs
-            13: 'bench',           # roadside objects
+#            13: 'bench',           # roadside objects
             16: 'dog',             # animals on road
             17: 'horse',           # animals on road
             18: 'sheep',           # animals on road
@@ -491,14 +494,15 @@ class DetectionServer:
             x, y, w, h = box
 
             # Person with high confidence (pedestrian)
-            if cls_id == 0 and conf > 0.5:
+            if cls_id == 0 and conf > 0.6:
                 box_area = w * h
                 # Large person (close) or central in image is critical
                 if box_area > 5000 or (x > 160 and x < 480):  # Central in 640-width image
                     return True
 
             # Stop sign with decent confidence
-            elif cls_id == 11 and conf > 0.45:  # Stop sign
+            #elif cls_id == 11 and conf > 0.45:  # Stop sign
+            elif cls_id == 11 and conf > 0.5:  # Stop sign
                 return True
 
             # Traffic light

@@ -1,11 +1,4 @@
-#!/usr/bin/env python3
-
-# This work is licensed under the terms of the MIT license.
-# For a copy, see <https://opensource.org/licenses/MIT>.
-
-# Author: Ryan De Iaco
-# Additional Comments: Carlos Wang
-# Date: November 21, 2018
+# Date: Jun 30, 2025
 
 import numpy as np
 import math
@@ -35,10 +28,7 @@ class BehaviouralPlanner:
 
     ######################################################
     ######################################################
-    # MODULE 7: TRANSITION STATE FUNCTION
-    #   Read over the function comments to familiarize yourself with the
-    #   arguments and necessary internal variables to set. Then follow the TODOs
-    #   and use the surrounding comments as a guide.
+    # TRANSITION STATE FUNCTION
     ######################################################
     ######################################################
     # Handles state transitions and computes the goal state.
@@ -96,22 +86,19 @@ class BehaviouralPlanner:
         if self._state == FOLLOW_LANE:
             # print("FOLLOW_LANE")
             # First, find the closest index to the ego vehicle.
-            # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             closest_len, closest_index = get_closest_index(waypoints, ego_state)
             # ------------------------------------------------------------------
 
-            # Next, find the goal index that lies within the lookahead distance
+            # The goal index that lies within the lookahead distance
             # along the waypoints.
-            # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             goal_index = self.get_goal_index(waypoints, ego_state,
                                             closest_len, closest_index)
             # ------------------------------------------------------------------
 
-            # Finally, check the index set between closest_index and goal_index
+            # Check the index set between closest_index and goal_index
             # for stop signs, and compute the goal state accordingly.
-            # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             goal_index, stop_sign_found = self.check_for_stop_signs(waypoints,
                                                     closest_index, goal_index)
@@ -121,7 +108,6 @@ class BehaviouralPlanner:
 
             # If stop sign found, set the goal to zero speed, then transition to
             # the deceleration state.
-            # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             if stop_sign_found:
               self._goal_state[2] = 0.
@@ -134,7 +120,6 @@ class BehaviouralPlanner:
         # state.
         elif self._state == DECELERATE_TO_STOP:
             # print("DECELERATE_TO_STOP")
-            # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
             if abs(closed_loop_speed) < STOP_THRESHOLD:
                 self._state = STAY_STOPPED
@@ -152,7 +137,6 @@ class BehaviouralPlanner:
             # check_for_stop_signs() helper functions.
             if self._stop_count == STOP_COUNTS:
                 # print("STOP COUNT")
-                # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
                 closest_len, closest_index = get_closest_index(waypoints,
                                                                     ego_state)
@@ -163,7 +147,6 @@ class BehaviouralPlanner:
                 # We've stopped for the required amount of time, so the new goal
                 # index for the stop line is not relevant. Use the goal index
                 # that is the lookahead distance away.
-                # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
                 stop_sign_found = self.check_for_stop_signs(waypoints,
                                                     closest_index, goal_index)[1]
@@ -173,7 +156,6 @@ class BehaviouralPlanner:
 
                 # If the stop sign is no longer along our path, we can now
                 # transition back to our lane following state.
-                # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
                 if not stop_sign_found:
                     self._state = FOLLOW_LANE
@@ -181,7 +163,6 @@ class BehaviouralPlanner:
 
             # Otherwise, continue counting.
             else:
-                # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
                 self._stop_count += 1
 
@@ -190,7 +171,7 @@ class BehaviouralPlanner:
 
     ######################################################
     ######################################################
-    # MODULE 7: GET GOAL INDEX FOR VEHICLE
+    # GET GOAL INDEX FOR VEHICLE
     #   Read over the function comments to familiarize yourself with the
     #   arguments and necessary variables to return. Then follow the TODOs
     #   and use the surrounding comments as a guide.
@@ -249,7 +230,6 @@ class BehaviouralPlanner:
             return wp_index
 
         # Otherwise, find our next waypoint.
-        # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
         while wp_index < len(waypoints) - 1:
             arc_length += np.linalg.norm(np.subtract(waypoints[wp_index+1][0:2],
@@ -406,10 +386,7 @@ class BehaviouralPlanner:
 
 ######################################################
 ######################################################
-# MODULE 7: CLOSEST WAYPOINT INDEX TO VEHICLE
-#   Read over the function comments to familiarize yourself with the
-#   arguments and necessary variables to return. Then follow the TODOs
-#   and use the surrounding comments as a guide.
+# CLOSEST WAYPOINT INDEX TO VEHICLE
 ######################################################
 ######################################################
 # Compute the waypoint index that is closest to the ego vehicle, and return
@@ -445,7 +422,6 @@ def get_closest_index(waypoints, ego_state):
     """
     closest_len = float('Inf')
     closest_index = 0
-    # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
     # ------------------------------------------------------------------
     for i in range(len(waypoints)):
         leng = np.linalg.norm(np.subtract(ego_state[0:2], waypoints[i][0:2]))

@@ -1,0 +1,24 @@
+avg_detection_time,0.06820624671683188
+max_detection_time,0.32859373092651367
+min_detection_time,0.0
+avg_fps,14.66141369941737
+total_detections,594
+avg_detections_per_frame,0.42795389048991356
+detection_classes_distribution,{"2": 484, "11": 108, "9": 2}
+avg_confidence,0.698043150231493
+total_warnings,594
+warning_types_distribution,{"car": 484, "stop sign": 108, "traffic light": 2}
+warning_severities,{"HIGH": 108, "MEDIUM": 2, "LOW": 484}
+total_runtime_seconds,422.12932
+class_precision,{"9": 1.0, "2": 1.0, "11": 1.0}
+class_avg_confidence,{"2": 0.6934996170938508, "11": 0.7282383127919507, "9": 0.4057106375694275}
+distance_detection_rates,{"pr\u00f3ximo": 1.0, "m\u00e9dio": 1.0, "distante": 1.0}
+current_weather_id,6
+current_weather_name,"HARDRAINNOON"
+detection_time_confidence_interval,[0.0650056985248456, 0.07140679490881817]
+detection_time_confidence_level,0.95
+detection_time_ci_lower,0.06483118352010546
+detection_time_ci_upper,0.07144254995697857
+detection_time_hypothesis_test,{"null_hypothesis": "Average detection time = 0.1s", "alternative": "Average detection time \u2260 0.1s", "t_statistic": -19.48698570123982, "p_value": 6.010136514848988e-75, "significant": true, "conclusion": "Reject null hypothesis"}
+statistical_power,1.0
+confidence_response_correlation,{"correlation_coefficient": NaN, "p_value": NaN, "significant": false, "interpretation": "Strong positive correlation"}
