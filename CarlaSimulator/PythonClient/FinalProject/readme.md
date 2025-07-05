@@ -74,3 +74,36 @@ docker run -it --rm carla_simulator_image
 
 docker run -it --rm carla_simulator_image bash
 exit
+
+FinalProject/
+├── Core Components
+│   ├── module_7.py                  # Ponto de entrada principal (Python 3.6)
+│   ├── threaded_detector.py         # Gerenciador de detecção assíncrona
+│   ├── behavioural_planner.py       # Planejador comportamental
+│   ├── local_planner.py             # Planejador local
+│   ├── path_optimizer.py            # Otimização de trajetória
+│   ├── collision_checker.py         # Verificação de colisões
+│   ├── velocity_planner.py          # Planejamento de velocidade
+│   └── controller2d.py              # Controlador do veículo
+│
+├── Perception System
+│   ├── detector_socket/             # Arquitetura distribuída
+│   │   ├── detector_client.py       # Cliente de detecção
+│   │   └── detector_server.py       # Servidor YOLO (Python 3.12)
+│
+├── Analysis & Reporting
+│   ├── performance_metrics.py       # Coleta de métricas
+│   └── results_reporter.py          # Geração de relatórios
+│
+├── Configuration
+│   ├── waypoints.txt                # Pontos de trajetória
+│   ├── stop_sign_params.txt         # Parâmetros de placas de parada
+│   ├── parked_vehicle_params.txt    # Parâmetros de veículos estacionados
+│   └── options.cfg                  # Configurações gerais
+│
+└── Execution
+    ├── start_all.bat                # Script de inicialização completo
+    ├── start_carla.bat              # Inicialização do CARLA
+    ├── start_client.bat             # Inicialização do cliente
+    ├── start_detector.bat           # Inicialização do detector
+    └── stop_all.bat                 # Encerramento de processos
